@@ -1,3 +1,3 @@
-module github.com/kapitoxapux/go-shortener
+module myapp
 
 go 1.19

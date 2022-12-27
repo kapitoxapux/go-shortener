@@ -2,9 +2,8 @@ package main
 
 import (
 	"log"
+	"myapp/pkg/handler"
 	"net/http"
-
-	"github.com/kapitoxapux/go-shortener/pkg/handler/handler"
 )
 
 func main() {
