@@ -59,7 +59,7 @@ jobs:
 
       - name: "Code increment #1"
         if: |
-          github.ref == 'refs/heads/main' ||
+          github.ref == 'refs/heads/iter1' ||
           github.head_ref == 'iter1' ||
           github.head_ref == 'iter2' ||
           github.head_ref == 'iter3' ||
