@@ -1,22 +1,13 @@
 package handler
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"io"
+	"myapp/pkg/storage"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 )
-
-var paths = map[string]*Shorter{}
-
-type Shorter struct {
-	id       string
-	longUrl  string
-	shortUrl string
-}
 
 type Handler struct {
 	*chi.Mux
@@ -55,15 +46,15 @@ func (h *Handler) NewAction() http.HandlerFunc {
 			res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			res.WriteHeader(http.StatusCreated)
 
-			short := setShort(string(b))
+			short := storage.SetShort(string(b))
 
-			res.Write([]byte(short.shortUrl))
+			res.Write([]byte(short.ShortUrl))
 
 		case "GET":
 			part := req.URL.Path
 			formated := strings.Replace(part, "/", "", -1)
 
-			sh := getShort(formated)
+			sh := storage.GetShort(formated)
 			if sh == "" {
 				http.Error(res, "Url not founded!", http.StatusBadRequest)
 
@@ -71,7 +62,7 @@ func (h *Handler) NewAction() http.HandlerFunc {
 			}
 
 			res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			res.Header().Set("Location", getFullUrl(formated))
+			res.Header().Set("Location", storage.GetFullUrl(formated))
 			res.WriteHeader(http.StatusTemporaryRedirect)
 
 		default:
@@ -83,42 +74,6 @@ func (h *Handler) NewAction() http.HandlerFunc {
 
 		}
 	}
-}
-
-func shortener(url string) string {
-	plainText := []byte(url)
-	sha256Hash := sha256.Sum256(plainText)
-
-	return hex.EncodeToString(sha256Hash[:])
-}
-
-func setShort(url string) *Shorter {
-
-	id := shortener(url)
-
-	shorter := new(Shorter)
-
-	shorter.id = id
-	shorter.shortUrl = "http://localhost:8080/" + id
-	shorter.longUrl = url
-
-	paths[shorter.id] = shorter
-
-	return shorter
-}
-
-func getShort(id string) string {
-	if paths[id] != nil {
-		return paths[id].shortUrl
-	}
-	return ""
-}
-
-func getFullUrl(id string) string {
-	if paths[id] != nil {
-		return paths[id].longUrl
-	}
-	return ""
 }
 
 func NewRoutes() *Handler {

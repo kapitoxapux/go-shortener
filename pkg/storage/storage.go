@@ -8,43 +8,43 @@ import (
 var paths = map[string]*Shorter{}
 
 type Shorter struct {
-	id       string
-	longUrl  string
-	shortUrl string
+	Id       string
+	LongUrl  string
+	ShortUrl string
 }
 
-func shortener(url string) string {
+func Shortener(url string) string {
 	plainText := []byte(url)
 	sha256Hash := sha256.Sum256(plainText)
 
 	return hex.EncodeToString(sha256Hash[:])
 }
 
-func setShort(url string) *Shorter {
+func SetShort(url string) *Shorter {
 
-	id := shortener(url)
+	id := Shortener(url)
 
 	shorter := new(Shorter)
 
-	shorter.id = id
-	shorter.shortUrl = "http://localhost:8080/" + id
-	shorter.longUrl = url
+	shorter.Id = id
+	shorter.ShortUrl = "http://localhost:8080/" + id
+	shorter.LongUrl = url
 
-	paths[shorter.id] = shorter
+	paths[shorter.Id] = shorter
 
 	return shorter
 }
 
-func getShort(id string) string {
+func GetShort(id string) string {
 	if paths[id] != nil {
-		return paths[id].shortUrl
+		return paths[id].ShortUrl
 	}
 	return ""
 }
 
-func getFullUrl(id string) string {
+func GetFullUrl(id string) string {
 	if paths[id] != nil {
-		return paths[id].longUrl
+		return paths[id].LongUrl
 	}
 	return ""
 }

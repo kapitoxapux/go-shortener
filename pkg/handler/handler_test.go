@@ -2,6 +2,7 @@ package handler
 
 import (
 	"io"
+	"myapp/pkg/storage"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -31,15 +32,15 @@ func testCustomAction() http.HandlerFunc {
 			res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			res.WriteHeader(http.StatusCreated)
 
-			short := setShort(string(b))
+			short := storage.SetShort(string(b))
 
-			res.Write([]byte(short.shortUrl))
+			res.Write([]byte(short.ShortUrl))
 
 		case "GET":
 			part := req.URL.Path
 			formated := strings.Replace(part, "/", "", -1)
 
-			sh := getShort(formated)
+			sh := storage.GetShort(formated)
 			if sh == "" {
 				http.Error(res, "Url not founded!", http.StatusBadRequest)
 
@@ -47,7 +48,7 @@ func testCustomAction() http.HandlerFunc {
 			}
 
 			res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			res.Header().Set("Location", getFullUrl(formated))
+			res.Header().Set("Location", storage.GetFullUrl(formated))
 			res.WriteHeader(http.StatusTemporaryRedirect)
 
 		default:
@@ -65,19 +66,19 @@ func Test_getFullUrl(t *testing.T) {
 	tests := []struct {
 		name    string
 		link    string
-		shorter *Shorter
+		shorter *storage.Shorter
 		equel   bool
 	}{
 		{
 			name:    "unique check",
 			link:    "http://localhost:8080/some_text_to_test_2",
-			shorter: setShort("http://localhost:8080/some_text_to_test_2"),
+			shorter: storage.SetShort("http://localhost:8080/some_text_to_test_2"),
 			equel:   false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getFullUrl(tt.link); (got != tt.shorter.shortUrl) == tt.equel {
+			if got := storage.GetFullUrl(tt.link); (got != tt.shorter.ShortUrl) == tt.equel {
 				t.Errorf("getFullUrl() = %v, want %v", got, tt.equel)
 			}
 		})
@@ -88,19 +89,19 @@ func Test_getShort(t *testing.T) {
 	tests := []struct {
 		name    string
 		link    string
-		shorter *Shorter
+		shorter *storage.Shorter
 		equel   bool
 	}{
 		{
 			name:    "unique check",
 			link:    "http://localhost:8080/some_text_to_test_1",
-			shorter: setShort("http://localhost:8080/some_text_to_test_1"),
+			shorter: storage.SetShort("http://localhost:8080/some_text_to_test_1"),
 			equel:   false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getShort(tt.link); (got != tt.shorter.shortUrl) == tt.equel {
+			if got := storage.GetShort(tt.link); (got != tt.shorter.ShortUrl) == tt.equel {
 				t.Errorf("getShort() = %v, want %v", got, tt.equel)
 			}
 		})
@@ -112,26 +113,26 @@ func Test_setShort(t *testing.T) {
 	tests := []struct {
 		name    string
 		link    string
-		want    *Shorter
+		want    *storage.Shorter
 		wantErr bool
 	}{
 		{
 			name:    "new Shorter",
 			link:    "http://localhost:8080/some_text_to_test_2",
-			want:    setShort("http://localhost:8080/some_text_to_test_2"),
+			want:    storage.SetShort("http://localhost:8080/some_text_to_test_2"),
 			wantErr: false,
 		},
 		{
 			name:    "catch error",
 			link:    "http://localhost:8080/some_text_to_test_1",
-			want:    setShort("http://localhost:8080/some_text_to_test_2"),
+			want:    storage.SetShort("http://localhost:8080/some_text_to_test_2"),
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := setShort(tt.link); (got.id != tt.want.id) != tt.wantErr {
-				t.Errorf("setShort() = %v, want %v", got, tt.want.id)
+			if got := storage.SetShort(tt.link); (got.Id != tt.want.Id) != tt.wantErr {
+				t.Errorf("setShort() = %v, want %v", got, tt.want.Id)
 			}
 		})
 	}
@@ -139,7 +140,7 @@ func Test_setShort(t *testing.T) {
 
 func TestEndpoints_Handle(t *testing.T) {
 
-	forTest := setShort("http://localhost:8080/some_text_to_test_2")
+	forTest := storage.SetShort("http://localhost:8080/some_text_to_test_2")
 
 	type want struct {
 		contentType string
@@ -179,7 +180,7 @@ func TestEndpoints_Handle(t *testing.T) {
 				contentType: "text/plain; charset=utf-8",
 				statusCode:  307,
 			},
-			pattern: forTest.shortUrl,
+			pattern: forTest.ShortUrl,
 		},
 		{
 			name:   "simple test #4",
