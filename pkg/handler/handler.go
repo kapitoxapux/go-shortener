@@ -148,7 +148,10 @@ func getShort(id string) string {
 }
 
 func getFullUrl(id string) string {
-	return paths[id].longUrl
+	if paths[id] != nil {
+		return paths[id].longUrl
+	}
+	return ""
 }
 
 func init() {
