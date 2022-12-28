@@ -27,8 +27,8 @@ func SetShort(url string) *Shorter {
 	shorter := new(Shorter)
 
 	shorter.ID = id
-	shorter.LongURL = "http://localhost:8080/" + id
-	shorter.ShortURL = url
+	shorter.ShortURL = "http://localhost:8080/" + id
+	shorter.LongURL = url
 
 	paths[shorter.ID] = shorter
 
