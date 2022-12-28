@@ -137,24 +137,6 @@ func Test_setShort(t *testing.T) {
 	}
 }
 
-func TestResponse_CustomAction(t *testing.T) {
-	type args struct {
-		req *Request
-	}
-	tests := []struct {
-		name string
-		res  *Response
-		args args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.res.CustomAction(tt.args.req)
-		})
-	}
-}
-
 func TestEndpoints_Handle(t *testing.T) {
 
 	forTest := setShort("http://localhost:8080/some_text_to_test_2")

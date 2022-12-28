@@ -5,15 +5,12 @@ import (
 	"encoding/hex"
 	"io"
 	"net/http"
-	"regexp"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
-// const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
 var paths = map[string]*Shorter{}
-
-type CustomHandler func(*Response, *Request)
 
 type Shorter struct {
 	id       string
@@ -21,106 +18,78 @@ type Shorter struct {
 	shortUrl string
 }
 
-type Route struct {
-	Pattern *regexp.Regexp
-	Handler CustomHandler
+type Handler struct {
+	*chi.Mux
 }
 
-type Endpoints struct {
-	Routes []Route
-	// DefaultRoute CustomHandler
-}
-
-type Request struct {
-	*http.Request
-	Params []string
-}
-
-type Response struct {
-	http.ResponseWriter
-}
-
-func (r *Endpoints) Handle(pattern string, handler CustomHandler) {
-	re := regexp.MustCompile(pattern)
-	route := Route{
-		Pattern: re,
-		Handler: handler,
+func NewHandler() *Handler {
+	chi := &Handler{
+		Mux: chi.NewMux(),
 	}
 
-	r.Routes = append(r.Routes, route)
+	chi.Get("/{`\\w+$`}", chi.NewAction())
+
+	chi.Post("/", chi.NewAction())
+
+	return chi
 }
 
-func EndpointsHandler() *Endpoints {
-	points := &Endpoints{
+func (h *Handler) NewAction() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case "POST":
 
-		// DefaultRoute: func(resp *Response, req *Request) {
-		// 	resp.CustomAction(req)
-		// },
+			if req.URL.Path != "/" {
+				http.Error(res, "Wrong route!", http.StatusBadRequest)
 
-	}
+				return
+			}
 
-	return points
-}
+			b, err := io.ReadAll(req.Body)
+			if err != nil {
+				http.Error(res, err.Error(), http.StatusBadRequest)
 
-func (p *Endpoints) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	req := &Request{Request: r}
-	resp := &Response{w}
+				return
+			}
 
-	for _, rt := range p.Routes {
-		if matches := rt.Pattern.FindStringSubmatch(r.URL.Path); len(matches) > 0 {
-			rt.Handler(resp, req)
+			res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			res.WriteHeader(http.StatusCreated)
 
-			return
+			short := setShort(string(b))
+
+			res.Write([]byte(short.shortUrl))
+
+		case "GET":
+			part := req.URL.Path
+			formated := strings.Replace(part, "/", "", -1)
+
+			sh := getShort(formated)
+			if sh == "" {
+				http.Error(res, "Url not founded!", http.StatusBadRequest)
+
+				return
+			}
+
+			res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			res.Header().Set("Location", getFullUrl(formated))
+			res.WriteHeader(http.StatusTemporaryRedirect)
+
+		default:
+			if req.Method != http.MethodGet {
+				http.Error(res, "Only GET and POST requests are allowed!", http.StatusBadRequest)
+
+				return
+			}
+
 		}
-	}
-}
-
-func (res *Response) CustomAction(req *Request) {
-	switch req.Method {
-	case "POST":
-		b, err := io.ReadAll(req.Body)
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusNotFound)
-
-			return
-		}
-
-		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		res.WriteHeader(http.StatusCreated)
-
-		short := setShort(string(b))
-
-		res.Write([]byte(short.shortUrl))
-
-	case "GET":
-		part := req.URL.Path
-		formated := strings.Replace(part, "/", "", -1)
-
-		sh := getShort(formated)
-		if sh == "" {
-			http.Error(res, "Url not founded!", http.StatusBadRequest)
-
-			return
-		}
-
-		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		res.Header().Set("Location", getFullUrl(formated))
-		res.WriteHeader(http.StatusTemporaryRedirect)
-
-	default:
-		if req.Method != http.MethodGet {
-			http.Error(res, "Only GET and POST requests are allowed!", http.StatusBadRequest)
-
-			return
-		}
-
 	}
 }
 
 func shortener(url string) string {
 	plainText := []byte(url)
 	sha256Hash := sha256.Sum256(plainText)
-	return hex.EncodeToString(sha256Hash[:]) //letterBytes[rand.Intn(len(url))]
+
+	return hex.EncodeToString(sha256Hash[:])
 }
 
 func setShort(url string) *Shorter {
@@ -152,16 +121,6 @@ func getFullUrl(id string) string {
 	return ""
 }
 
-func init() {
-
-	routes := EndpointsHandler()
-
-	routes.Handle(`\w+$`, func(resp *Response, req *Request) {
-		resp.CustomAction(req)
-	})
-
-	routes.Handle("/", func(resp *Response, req *Request) {
-		resp.CustomAction(req)
-	})
-
+func NewRoutes() *Handler {
+	return NewHandler()
 }
