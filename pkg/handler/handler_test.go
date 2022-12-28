@@ -34,7 +34,7 @@ func testCustomAction() http.HandlerFunc {
 
 			short := storage.SetShort(string(b))
 
-			res.Write([]byte(short.ShortUrl))
+			res.Write([]byte(short.ShortURL))
 
 		case "GET":
 			part := req.URL.Path
@@ -48,7 +48,7 @@ func testCustomAction() http.HandlerFunc {
 			}
 
 			res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			res.Header().Set("Location", storage.GetFullUrl(formated))
+			res.Header().Set("Location", storage.GetFullURL(formated))
 			res.WriteHeader(http.StatusTemporaryRedirect)
 
 		default:
@@ -78,7 +78,7 @@ func Test_getFullUrl(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := storage.GetFullUrl(tt.link); (got != tt.shorter.ShortUrl) == tt.equel {
+			if got := storage.GetFullURL(tt.link); (got != tt.shorter.ShortURL) == tt.equel {
 				t.Errorf("getFullUrl() = %v, want %v", got, tt.equel)
 			}
 		})
@@ -101,7 +101,7 @@ func Test_getShort(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := storage.GetShort(tt.link); (got != tt.shorter.ShortUrl) == tt.equel {
+			if got := storage.GetShort(tt.link); (got != tt.shorter.ShortURL) == tt.equel {
 				t.Errorf("getShort() = %v, want %v", got, tt.equel)
 			}
 		})
@@ -131,8 +131,8 @@ func Test_setShort(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := storage.SetShort(tt.link); (got.Id != tt.want.Id) != tt.wantErr {
-				t.Errorf("setShort() = %v, want %v", got, tt.want.Id)
+			if got := storage.SetShort(tt.link); (got.ID != tt.want.ID) != tt.wantErr {
+				t.Errorf("setShort() = %v, want %v", got, tt.want.ID)
 			}
 		})
 	}
@@ -180,7 +180,7 @@ func TestEndpoints_Handle(t *testing.T) {
 				contentType: "text/plain; charset=utf-8",
 				statusCode:  307,
 			},
-			pattern: forTest.ShortUrl,
+			pattern: forTest.ShortURL,
 		},
 		{
 			name:   "simple test #4",

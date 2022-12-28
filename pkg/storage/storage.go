@@ -8,9 +8,9 @@ import (
 var paths = map[string]*Shorter{}
 
 type Shorter struct {
-	Id       string
-	LongUrl  string
-	ShortUrl string
+	ID       string
+	LongURL  string
+	ShortURL string
 }
 
 func Shortener(url string) string {
@@ -26,25 +26,25 @@ func SetShort(url string) *Shorter {
 
 	shorter := new(Shorter)
 
-	shorter.Id = id
-	shorter.ShortUrl = "http://localhost:8080/" + id
-	shorter.LongUrl = url
+	shorter.ID = id
+	shorter.LongURL = "http://localhost:8080/" + id
+	shorter.ShortURL = url
 
-	paths[shorter.Id] = shorter
+	paths[shorter.ID] = shorter
 
 	return shorter
 }
 
 func GetShort(id string) string {
 	if paths[id] != nil {
-		return paths[id].ShortUrl
+		return paths[id].ShortURL
 	}
 	return ""
 }
 
-func GetFullUrl(id string) string {
+func GetFullURL(id string) string {
 	if paths[id] != nil {
-		return paths[id].LongUrl
+		return paths[id].LongURL
 	}
 	return ""
 }

@@ -48,7 +48,7 @@ func (h *Handler) NewAction() http.HandlerFunc {
 
 			short := storage.SetShort(string(b))
 
-			res.Write([]byte(short.ShortUrl))
+			res.Write([]byte(short.ShortURL))
 
 		case "GET":
 			part := req.URL.Path
@@ -62,7 +62,7 @@ func (h *Handler) NewAction() http.HandlerFunc {
 			}
 
 			res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			res.Header().Set("Location", storage.GetFullUrl(formated))
+			res.Header().Set("Location", storage.GetFullURL(formated))
 			res.WriteHeader(http.StatusTemporaryRedirect)
 
 		default:
