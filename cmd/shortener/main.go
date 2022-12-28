@@ -79,9 +79,16 @@ func (p *Endpoints) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (res *Response) CustomAction(req *Request) {
 	switch req.Method {
 	case "POST":
+
+		if req.URL.Path != "/" {
+			http.Error(res, "Wrong route!", http.StatusBadRequest)
+
+			return
+		}
+
 		b, err := io.ReadAll(req.Body)
 		if err != nil {
-			http.Error(res, err.Error(), http.StatusNotFound)
+			http.Error(res, err.Error(), http.StatusBadRequest)
 
 			return
 		}

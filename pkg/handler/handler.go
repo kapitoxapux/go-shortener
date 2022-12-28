@@ -1,14 +1,15 @@
 package handler
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
-	"math/rand"
 	"net/http"
 	"regexp"
 	"strings"
 )
 
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+// const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 var paths = map[string]*Shorter{}
 
@@ -117,12 +118,9 @@ func (res *Response) CustomAction(req *Request) {
 }
 
 func shortener(url string) string {
-	b := make([]byte, 9)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(url))]
-	}
-
-	return string(b)
+	plainText := []byte(url)
+	sha256Hash := sha256.Sum256(plainText)
+	return hex.EncodeToString(sha256Hash[:]) //letterBytes[rand.Intn(len(url))]
 }
 
 func setShort(url string) *Shorter {
