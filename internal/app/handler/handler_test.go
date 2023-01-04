@@ -2,7 +2,7 @@ package handler
 
 import (
 	"io"
-	"myapp/pkg/storage"
+	"myapp/internal/app/storage"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,7 +17,7 @@ func testCustomAction() http.HandlerFunc {
 		switch req.Method {
 		case "POST":
 			if req.URL.Path != "/" {
-				http.Error(res, "Wrong route!", http.StatusBadRequest)
+				http.Error(res, "Wrong route!", http.StatusNotFound)
 
 				return
 			}
@@ -53,7 +53,7 @@ func testCustomAction() http.HandlerFunc {
 
 		default:
 			if req.Method != http.MethodGet {
-				http.Error(res, "Only GET and POST requests are allowed!", http.StatusBadRequest)
+				http.Error(res, "Only GET and POST requests are allowed!", http.StatusNotFound)
 
 				return
 			}

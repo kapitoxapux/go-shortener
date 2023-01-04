@@ -1,12 +1,9 @@
 package storage
 
 import (
-	// "crypto/sha256"
-	// "encoding/hex"
+	"math/big"
 	"math/rand"
 )
-
-const letterBytes = "_.-~1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 var short string = ""
 
@@ -19,33 +16,30 @@ type Shorter struct {
 }
 
 func Shortener(url string) string {
-	// plainText := []byte(url)
-	// sha256Hash := sha256.Sum256(plainText)
-	// return hex.EncodeToString(sha256Hash[:])
-
-	b := make([]byte, 7)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	s := make([]byte, 7)
+	for i := range s {
+		s[i] = url[rand.Intn(len(url))]
 	}
 
-	if paths[string(b)] != nil {
+	b := new(big.Int).SetBytes(s[2:]).Text(62)
+	if paths[b] != nil {
 		return ""
 	}
-	return string(b)
-
+	return b
 }
 
-func SetShort(url string) *Shorter {
+func SetShort(link string) *Shorter {
 	short = ""
 	for short == "" {
-		short = Shortener(url)
+		short = Shortener(link)
 	}
 
 	shorter := new(Shorter)
 
 	shorter.ID = short
 	shorter.ShortURL = "http://localhost:8080/" + short
-	shorter.LongURL = url
+
+	shorter.LongURL = link
 
 	paths[short] = shorter
 

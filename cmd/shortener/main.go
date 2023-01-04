@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"myapp/pkg/handler"
+	"myapp/internal/app/handler"
 )
 
 func main() {
