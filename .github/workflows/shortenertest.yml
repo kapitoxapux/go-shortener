@@ -4,8 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      # - main
-      - iter3
+      - main
 
 jobs:
 
@@ -15,7 +14,7 @@ jobs:
     steps:
       - name: Check branch name
         run: |
-          if [[ ! $GITHUB_REF_NAME =~ ^iter[0-9]+$ ]]; then echo "Branch name must match pattern 'iter<number>'" && exit 1; fi
+          if [[ ! $GITHUB_HEAD_REF =~ ^iter[0-9]+$ ]]; then echo "Branch name must match pattern 'iter<number>'" && exit 1; fi
 
   shortenertest:
     runs-on: ubuntu-latest
@@ -90,7 +89,7 @@ jobs:
 
       - name: "Code increment #2"
         if: |
-          github.ref == 'refs/heads/iter3' ||
+          github.ref == 'refs/heads/main' ||
           github.head_ref == 'iter2' ||
           github.head_ref == 'iter3' ||
           github.head_ref == 'iter4' ||
@@ -119,7 +118,7 @@ jobs:
 
       - name: "Code increment #3"
         if: |
-          github.ref == 'refs/heads/iter3' ||
+          github.ref == 'refs/heads/main' ||
           github.head_ref == 'iter3' ||
           github.head_ref == 'iter4' ||
           github.head_ref == 'iter5' ||
