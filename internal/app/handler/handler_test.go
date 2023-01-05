@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"io"
 	"myapp/internal/app/storage"
 	"net/http"
@@ -12,6 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var forTest *storage.Shorter
+
 func testCustomAction(res http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "POST":
@@ -21,7 +24,7 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		b, err := io.ReadAll(req.Body)
+		_, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 
@@ -31,9 +34,7 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusCreated)
 
-		short := storage.SetShort(string(b))
-
-		res.Write([]byte(short.ShortURL))
+		res.Write([]byte(forTest.ShortURL))
 
 	case "GET":
 		part := req.URL.Path
@@ -63,11 +64,12 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 
 func TestEndpoints_Handle(t *testing.T) {
 
-	forTest := storage.SetShort("http://localhost:8080/some_text_to_test_2")
+	forTest = storage.SetShort("http://localhost:8080/some_text_to_test_2")
 
 	type want struct {
 		contentType string
 		statusCode  int
+		bodyContent string
 	}
 
 	tests := []struct {
@@ -83,16 +85,18 @@ func TestEndpoints_Handle(t *testing.T) {
 			want: want{
 				contentType: "text/plain; charset=utf-8",
 				statusCode:  400,
+				bodyContent: "",
 			},
 			pattern: "/",
 		},
 		{
 			name:   "simple test #2",
 			method: "POST",
-			body:   "fullUrl",
+			body:   forTest.LongURL,
 			want: want{
 				contentType: "text/plain; charset=utf-8",
 				statusCode:  201,
+				bodyContent: forTest.ShortURL,
 			},
 			pattern: "/",
 		},
@@ -102,45 +106,55 @@ func TestEndpoints_Handle(t *testing.T) {
 			want: want{
 				contentType: "text/plain; charset=utf-8",
 				statusCode:  307,
+				bodyContent: "",
 			},
 			pattern: forTest.ShortURL,
 		},
 		{
 			name:   "simple test #4",
 			method: "POST",
-			body:   "fullUrl",
+			body:   forTest.LongURL,
 			want: want{
 				contentType: "text/plain; charset=utf-8",
-				statusCode:  400,
+				statusCode:  404,
+				bodyContent: "Wrong route!\n",
 			},
-			pattern: "/shortUrl",
+			pattern: forTest.ShortURL,
 		},
 		{
 			name:   "simple test #5",
 			method: "PUT",
-			body:   "fullUrl",
+			body:   forTest.LongURL,
 			want: want{
 				contentType: "text/plain; charset=utf-8",
-				statusCode:  400,
+				statusCode:  404,
+				bodyContent: "",
 			},
-			pattern: "/shortUrl",
+			pattern: forTest.ShortURL,
 		},
 		{
 			name:   "simple test #6",
 			method: "PUT",
-			body:   "fullUrl",
+			body:   forTest.LongURL,
 			want: want{
 				contentType: "text/plain; charset=utf-8",
-				statusCode:  400,
+				statusCode:  404,
+				bodyContent: "",
 			},
 			pattern: "/",
 		},
 	}
 
+	var request *http.Request
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			request := httptest.NewRequest(tt.method, tt.pattern, nil)
+			if tt.method == "POST" {
+				request = httptest.NewRequest(tt.method, tt.pattern, bytes.NewBuffer([]byte(tt.body)))
+			} else {
+				request = httptest.NewRequest(tt.method, tt.pattern, nil)
+			}
+
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(testCustomAction)
 			h(w, request)
@@ -150,8 +164,11 @@ func TestEndpoints_Handle(t *testing.T) {
 			assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
 
 			if request.Method == "POST" {
-				_, err := io.ReadAll(result.Body)
+				link, err := io.ReadAll(result.Body)
 				require.NoError(t, err)
+
+				assert.Equal(t, tt.want.bodyContent, string(link))
+
 				err = result.Body.Close()
 				require.NoError(t, err)
 			}
