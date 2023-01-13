@@ -105,7 +105,7 @@ func GetJsonShortAction(res http.ResponseWriter, req *http.Request) {
 	}
 	short := storage.SetShort(j.Url)
 
-	res.WriteHeader(http.StatusOK)
+	res.WriteHeader(http.StatusCreated)
 
 	res.Write([]byte(`{"result":"` + short.ShortURL + `"}`))
 }

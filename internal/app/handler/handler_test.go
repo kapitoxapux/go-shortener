@@ -61,7 +61,7 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Content-Type", "application/json; charset=utf-8")
 		res.Header().Add("Accept", "application/json")
 
-		res.WriteHeader(http.StatusOK)
+		res.WriteHeader(http.StatusCreated)
 
 		res.Write([]byte(`{"result":"` + forTest.ShortURL + `"}`))
 
@@ -187,7 +187,7 @@ func TestEndpoints_Handle(t *testing.T) {
 			body:   `{"url":"` + forTest.LongURL + `"}`,
 			want: want{
 				contentType: "application/json; charset=utf-8",
-				statusCode:  200,
+				statusCode:  201,
 				bodyContent: `{"result":"` + forTest.ShortURL + `"}`,
 			},
 			pattern: "/api/shorten",
