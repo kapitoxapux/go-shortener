@@ -11,8 +11,8 @@ var paths = map[string]*Shorter{}
 
 type Shorter struct {
 	ID       string
-	LongURL  string
-	ShortURL string
+	LongURL  string `json:"longURL"`
+	ShortURL string `json:"shortURL"`
 }
 
 func Shortener(url string) string {

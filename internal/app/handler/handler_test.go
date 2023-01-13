@@ -16,14 +16,21 @@ import (
 var forTest *storage.Shorter
 
 func testCustomAction(res http.ResponseWriter, req *http.Request) {
-	switch req.Method {
-	case "POST":
+	switch req.URL.Path {
+	case "/":
+		if req.Method != http.MethodPost {
+			http.Error(res, "Wrong route!", http.StatusNotFound)
+
+			return
+		}
+
 		if req.URL.Path != "/" {
 			http.Error(res, "Wrong route!", http.StatusNotFound)
 
 			return
 		}
 
+		defer req.Body.Close()
 		_, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
@@ -36,10 +43,37 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 
 		res.Write([]byte(forTest.ShortURL))
 
-	case "GET":
+	case "/api/shorten":
+		if req.Method != http.MethodPost {
+			http.Error(res, "Wrong route!", http.StatusNotFound)
+
+			return
+		}
+
+		defer req.Body.Close()
+		_, err := io.ReadAll(req.Body)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+
+			return
+		}
+
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		res.Header().Add("Accept", "application/json")
+
+		res.WriteHeader(http.StatusOK)
+
+		res.Write([]byte(`{"result":"` + forTest.ShortURL + `"}`))
+
+	default:
+		if req.Method != http.MethodGet {
+			http.Error(res, "Wrong route!", http.StatusNotFound)
+
+			return
+		}
+
 		part := req.URL.Path
 		formated := strings.Replace(part, "/", "", -1)
-
 		sh := storage.GetShort(formated)
 		if sh == "" {
 			http.Error(res, "Url not founded!", http.StatusBadRequest)
@@ -51,20 +85,13 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Location", storage.GetFullURL(formated))
 		res.WriteHeader(http.StatusTemporaryRedirect)
 
-	default:
-		if req.Method != http.MethodGet {
-			http.Error(res, "Only GET and POST requests are allowed!", http.StatusNotFound)
-
-			return
-		}
-
 	}
 
 }
 
 func TestEndpoints_Handle(t *testing.T) {
 
-	forTest = storage.SetShort("http://localhost:8080/some_text_to_test_2")
+	forTest = storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
 
 	type want struct {
 		contentType string
@@ -84,8 +111,8 @@ func TestEndpoints_Handle(t *testing.T) {
 			method: "GET",
 			want: want{
 				contentType: "text/plain; charset=utf-8",
-				statusCode:  400,
-				bodyContent: "",
+				statusCode:  404,
+				bodyContent: "Wrong route!\n",
 			},
 			pattern: "/",
 		},
@@ -139,9 +166,31 @@ func TestEndpoints_Handle(t *testing.T) {
 			want: want{
 				contentType: "text/plain; charset=utf-8",
 				statusCode:  404,
-				bodyContent: "",
+				bodyContent: "Wrong route!\n",
 			},
 			pattern: "/",
+		},
+		{
+			name:   "simple test #7",
+			method: "POST",
+			body:   `{"url":"` + forTest.LongURL + `"}`,
+			want: want{
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  404,
+				bodyContent: "Wrong route!\n",
+			},
+			pattern: "/api",
+		},
+		{
+			name:   "simple test #8",
+			method: "POST",
+			body:   `{"url":"` + forTest.LongURL + `"}`,
+			want: want{
+				contentType: "application/json; charset=utf-8",
+				statusCode:  200,
+				bodyContent: `{"result":"` + forTest.ShortURL + `"}`,
+			},
+			pattern: "/api/shorten",
 		},
 	}
 
@@ -164,13 +213,18 @@ func TestEndpoints_Handle(t *testing.T) {
 			assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
 
 			if request.Method == "POST" {
+				defer result.Body.Close()
 				link, err := io.ReadAll(result.Body)
 				require.NoError(t, err)
 
+				// if result.Header.Get("Content-Type") == "application/json; charset=utf-8" {
+				// 	assert.Equal(t, tt.want.bodyContent, link)
+				// } else {
+				// 	assert.Equal(t, tt.want.bodyContent, string(link))
+				// }
+
 				assert.Equal(t, tt.want.bodyContent, string(link))
 
-				err = result.Body.Close()
-				require.NoError(t, err)
 			}
 
 		})
