@@ -10,7 +10,7 @@ import (
 
 func main() {
 
-	env := config.SetEnvConf("localhost:8080", "/app")
+	env := config.SetEnvConf("localhost:8080", "/")
 
 	server := &http.Server{
 		Addr:    env.Address,
