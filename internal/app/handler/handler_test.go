@@ -3,9 +3,11 @@ package handler
 import (
 	"bytes"
 	"io"
+	"myapp/internal/app/config"
 	"myapp/internal/app/storage"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -17,14 +19,14 @@ var forTest *storage.Shorter
 
 func testCustomAction(res http.ResponseWriter, req *http.Request) {
 	switch req.URL.Path {
-	case "/":
+	case os.Getenv("BASE_URL"):
 		if req.Method != http.MethodPost {
 			http.Error(res, "Wrong route!", http.StatusNotFound)
 
 			return
 		}
 
-		if req.URL.Path != "/" {
+		if req.URL.Path != os.Getenv("BASE_URL") {
 			http.Error(res, "Wrong route!", http.StatusNotFound)
 
 			return
@@ -43,7 +45,7 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 
 		res.Write([]byte(forTest.ShortURL))
 
-	case "/api/shorten":
+	case os.Getenv("BASE_URL") + "/api/shorten":
 		if req.Method != http.MethodPost {
 			http.Error(res, "Wrong route!", http.StatusNotFound)
 
@@ -73,7 +75,8 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 		}
 
 		part := req.URL.Path
-		formated := strings.Replace(part, "/", "", -1)
+		formated := strings.Replace(part, os.Getenv("BASE_URL")+"/", "", -1)
+
 		sh := storage.GetShort(formated)
 		if sh == "" {
 			http.Error(res, "Url not founded!", http.StatusBadRequest)
@@ -90,6 +93,8 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 }
 
 func TestEndpoints_Handle(t *testing.T) {
+
+	_ = config.SetEnvConf("localhost:8080", "/app")
 
 	forTest = storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
 
@@ -114,7 +119,7 @@ func TestEndpoints_Handle(t *testing.T) {
 				statusCode:  404,
 				bodyContent: "Wrong route!\n",
 			},
-			pattern: "/",
+			pattern: os.Getenv("BASE_URL"),
 		},
 		{
 			name:   "simple test #2",
@@ -125,7 +130,7 @@ func TestEndpoints_Handle(t *testing.T) {
 				statusCode:  201,
 				bodyContent: forTest.ShortURL,
 			},
-			pattern: "/",
+			pattern: os.Getenv("BASE_URL"),
 		},
 		{
 			name:   "simple test #3",
@@ -168,7 +173,7 @@ func TestEndpoints_Handle(t *testing.T) {
 				statusCode:  404,
 				bodyContent: "Wrong route!\n",
 			},
-			pattern: "/",
+			pattern: os.Getenv("BASE_URL"),
 		},
 		{
 			name:   "simple test #7",
@@ -190,7 +195,7 @@ func TestEndpoints_Handle(t *testing.T) {
 				statusCode:  201,
 				bodyContent: `{"result":"` + forTest.ShortURL + `"}`,
 			},
-			pattern: "/api/shorten",
+			pattern: os.Getenv("BASE_URL") + "/api/shorten",
 		},
 	}
 
@@ -199,8 +204,10 @@ func TestEndpoints_Handle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			if tt.method == "POST" {
+				println(tt.name + " " + tt.pattern)
 				request = httptest.NewRequest(tt.method, tt.pattern, bytes.NewBuffer([]byte(tt.body)))
 			} else {
+				println(tt.name + " " + tt.pattern)
 				request = httptest.NewRequest(tt.method, tt.pattern, nil)
 			}
 
@@ -216,12 +223,6 @@ func TestEndpoints_Handle(t *testing.T) {
 				defer result.Body.Close()
 				link, err := io.ReadAll(result.Body)
 				require.NoError(t, err)
-
-				// if result.Header.Get("Content-Type") == "application/json; charset=utf-8" {
-				// 	assert.Equal(t, tt.want.bodyContent, link)
-				// } else {
-				// 	assert.Equal(t, tt.want.bodyContent, string(link))
-				// }
 
 				assert.Equal(t, tt.want.bodyContent, string(link))
 
