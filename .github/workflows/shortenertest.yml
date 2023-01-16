@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - iter4
+      - iter5
 
 jobs:
 
@@ -147,7 +147,7 @@ jobs:
 
       - name: "Code increment #4"
         if: |
-          github.ref == 'refs/heads/iter4' ||
+          github.ref == 'refs/heads/main' ||
           github.head_ref == 'iter4' ||
           github.head_ref == 'iter5' ||
           github.head_ref == 'iter6' ||
@@ -176,7 +176,7 @@ jobs:
 
       - name: "Code increment #5"
         if: |
-          github.ref == 'refs/heads/main' ||
+          github.ref == 'refs/heads/iter5' ||
           github.head_ref == 'iter5' ||
           github.head_ref == 'iter6' ||
           github.head_ref == 'iter7' ||
