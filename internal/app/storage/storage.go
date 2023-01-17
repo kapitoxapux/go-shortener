@@ -38,7 +38,7 @@ func SetShort(link string) *Shorter {
 	shorter := new(Shorter)
 
 	shorter.ID = short
-	shorter.ShortURL = "http://" + os.Getenv("SERVER_ADDRESS") + os.Getenv("BASE_URL") + "/" + short
+	shorter.ShortURL = os.Getenv("BASE_URL") + "/" + short
 
 	shorter.LongURL = link
 

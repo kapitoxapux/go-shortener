@@ -19,7 +19,7 @@ var forTest *storage.Shorter
 
 func testCustomAction(res http.ResponseWriter, req *http.Request) {
 	switch req.URL.Path {
-	case os.Getenv("BASE_URL"):
+	case "/":
 		if req.Method != http.MethodPost {
 			http.Error(res, "Wrong route!", http.StatusNotFound)
 
@@ -45,7 +45,7 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 
 		res.Write([]byte(forTest.ShortURL))
 
-	case os.Getenv("BASE_URL") + "/api/shorten":
+	case "/api/shorten":
 		if req.Method != http.MethodPost {
 			http.Error(res, "Wrong route!", http.StatusNotFound)
 
@@ -75,7 +75,7 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 		}
 
 		part := req.URL.Path
-		formated := strings.Replace(part, os.Getenv("BASE_URL")+"/", "", -1)
+		formated := strings.Replace(part, "/", "", -1)
 
 		sh := storage.GetShort(formated)
 		if sh == "" {

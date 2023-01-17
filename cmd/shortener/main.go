@@ -18,7 +18,7 @@ func main() {
 
 	baseURL := os.Getenv("BASE_URL")
 	if baseURL == "" {
-		baseURL = "/app"
+		baseURL = "http://" + serverAdress
 	}
 
 	env := config.SetEnvConf(serverAdress, baseURL)

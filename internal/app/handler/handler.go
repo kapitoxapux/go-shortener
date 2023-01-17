@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"io"
-	"os"
 
 	"myapp/internal/app/storage"
 	"net/http"
@@ -30,7 +29,7 @@ func SetShortAction(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if req.URL.Path != os.Getenv("BASE_URL") {
+	if req.URL.Path != "/" {
 		http.Error(res, "Wrong route!", http.StatusNotFound)
 
 		return
@@ -62,7 +61,7 @@ func GetShortAction(res http.ResponseWriter, req *http.Request) {
 	}
 
 	part := req.URL.Path
-	formated := strings.Replace(part, os.Getenv("BASE_URL")+"/", "", -1)
+	formated := strings.Replace(part, "/", "", -1)
 
 	sh := storage.GetShort(formated)
 	if sh == "" {
@@ -84,7 +83,7 @@ func GetJsonShortAction(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if req.URL.Path != os.Getenv("BASE_URL")+"/api/shorten" {
+	if req.URL.Path != "/api/shorten" {
 		http.Error(res, "Wrong route!", http.StatusNotFound)
 
 		return
@@ -116,11 +115,9 @@ func NewRoutes() *Handler {
 		Mux: chi.NewMux(),
 	}
 
-	mux.Route(os.Getenv("BASE_URL"), func(r chi.Router) {
-		r.Post("/", SetShortAction)
-		r.Get("/{`\\w+$`}", GetShortAction)
-		r.Post("/api/shorten", GetJsonShortAction)
-	})
+	mux.Post("/", SetShortAction)
+	mux.Get("/{`\\w+$`}", GetShortAction)
+	mux.Post("/api/shorten", GetJsonShortAction)
 
 	return mux
 }
