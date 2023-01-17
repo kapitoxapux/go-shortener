@@ -94,7 +94,17 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 
 func TestEndpoints_Handle(t *testing.T) {
 
-	_ = config.SetEnvConf("localhost:8080", "/")
+	serverAdress := os.Getenv("SERVER_ADDRESS")
+	if serverAdress == "" {
+		serverAdress = "localhost:8080"
+	}
+
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "/app"
+	}
+
+	_ = config.SetEnvConf(serverAdress, baseURL)
 
 	forTest = storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
 
