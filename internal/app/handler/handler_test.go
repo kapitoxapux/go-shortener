@@ -26,7 +26,7 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		if req.URL.Path != os.Getenv("BASE_URL") {
+		if req.URL.Path != "/" {
 			http.Error(res, "Wrong route!", http.StatusNotFound)
 
 			return
@@ -101,7 +101,7 @@ func TestEndpoints_Handle(t *testing.T) {
 
 	baseURL := os.Getenv("BASE_URL")
 	if baseURL == "" {
-		baseURL = "/app"
+		baseURL = "http://" + serverAdress
 	}
 
 	_ = config.SetEnvConf(serverAdress, baseURL)
@@ -129,7 +129,7 @@ func TestEndpoints_Handle(t *testing.T) {
 				statusCode:  404,
 				bodyContent: "Wrong route!\n",
 			},
-			pattern: os.Getenv("BASE_URL"),
+			pattern: os.Getenv("BASE_URL") + "/",
 		},
 		{
 			name:   "simple test #2",
@@ -140,7 +140,7 @@ func TestEndpoints_Handle(t *testing.T) {
 				statusCode:  201,
 				bodyContent: forTest.ShortURL,
 			},
-			pattern: os.Getenv("BASE_URL"),
+			pattern: os.Getenv("BASE_URL") + "/",
 		},
 		{
 			name:   "simple test #3",
@@ -183,7 +183,7 @@ func TestEndpoints_Handle(t *testing.T) {
 				statusCode:  404,
 				bodyContent: "Wrong route!\n",
 			},
-			pattern: os.Getenv("BASE_URL"),
+			pattern: os.Getenv("BASE_URL") + "/",
 		},
 		{
 			name:   "simple test #7",
@@ -214,10 +214,8 @@ func TestEndpoints_Handle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			if tt.method == "POST" {
-				println(tt.name + " " + tt.pattern)
 				request = httptest.NewRequest(tt.method, tt.pattern, bytes.NewBuffer([]byte(tt.body)))
 			} else {
-				println(tt.name + " " + tt.pattern)
 				request = httptest.NewRequest(tt.method, tt.pattern, nil)
 			}
 
