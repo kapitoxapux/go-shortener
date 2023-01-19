@@ -12,7 +12,6 @@ func SetEnvConf(address string, base string) *Config {
 
 	os.Setenv("SERVER_ADDRESS", address)
 	os.Setenv("BASE_URL", base)
-	os.Setenv("FILE_STORAGE_PATH", "E:/YandexPracticum/go-shortener/cmd/shortener/json.txt")
 
 	env.Address = os.Getenv("SERVER_ADDRESS")
 	env.Base = os.Getenv("BASE_URL")

@@ -1,1 +1,0 @@
-{"ID":"8lN4LyG","longURL":"https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6","shortURL":"http://localhost:8080/8lN4LyG"}
