@@ -104,7 +104,9 @@ func TestEndpoints_Handle(t *testing.T) {
 		baseURL = "http://" + serverAdress
 	}
 
-	_ = config.SetEnvConf(serverAdress, baseURL)
+	path := "json.txt"
+
+	_ = config.SetEnvConf(serverAdress, baseURL, path)
 
 	forTest = storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
 
