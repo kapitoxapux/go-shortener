@@ -32,7 +32,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:    env.Address,
-		Handler: handler.NewRoutes(),
+		Handler: handler.GzipMiddleware(handler.NewRoutes()),
 	}
 
 	log.Fatal(server.ListenAndServe())

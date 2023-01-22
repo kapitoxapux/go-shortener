@@ -25,6 +25,10 @@ func SetEnvConf(address string, base string, path string) *Config {
 }
 
 func GetStoragePath() string {
+	// if os.Getenv("FILE_STORAGE_PATH") == "" {
+	// 	os.Setenv("FILE_STORAGE_PATH", "json.txt")
+	// }
+
 	path := os.Getenv("FILE_STORAGE_PATH")
 	return path
 }
