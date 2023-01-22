@@ -15,11 +15,11 @@ type Handler struct {
 	*chi.Mux
 }
 
-type JsonShorter struct {
-	Url string `json:"url"`
+type JSONShorter struct {
+	URL string `json:"url"`
 }
 
-var j JsonShorter
+var j JSONShorter
 
 type gzipWriter struct {
 	http.ResponseWriter
@@ -120,7 +120,7 @@ func GetShortAction(res http.ResponseWriter, req *http.Request) {
 
 }
 
-func GetJsonShortAction(res http.ResponseWriter, req *http.Request) {
+func GetJSONShortAction(res http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(res, "Only POST requests are allowed for this route!", http.StatusNotFound)
 
@@ -162,7 +162,7 @@ func GetJsonShortAction(res http.ResponseWriter, req *http.Request) {
 	if err := json.Unmarshal(b, &j); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 	}
-	short := storage.SetShort(j.Url)
+	short := storage.SetShort(j.URL)
 
 	res.WriteHeader(http.StatusCreated)
 
@@ -176,7 +176,7 @@ func NewRoutes() *Handler {
 
 	mux.Post("/", SetShortAction)
 	mux.Get("/{`\\w+$`}", GetShortAction)
-	mux.Post("/api/shorten", GetJsonShortAction)
+	mux.Post("/api/shorten", GetJSONShortAction)
 
 	return mux
 }
