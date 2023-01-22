@@ -33,31 +33,6 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 func GzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		var reader io.Reader
-
-		if r.Header.Get(`Content-Encoding`) == `gzip` {
-			gzr, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			reader = gzr
-			defer gzr.Close()
-
-		} else {
-			reader = r.Body
-		}
-
-		defer r.Body.Close()
-		body, err := io.ReadAll(reader)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Write(body)
-		r.ContentLength = int64(len(body))
-
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			next.ServeHTTP(w, r)
 			return
@@ -89,8 +64,22 @@ func SetShortAction(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	var reader io.Reader
+
+	if req.Header.Get(`Content-Encoding`) == `gzip` {
+		gzr, err := gzip.NewReader(req.Body)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		reader = gzr
+		defer gzr.Close()
+	} else {
+		reader = req.Body
+	}
+
 	defer req.Body.Close()
-	b, err := io.ReadAll(req.Body)
+	b, err := io.ReadAll(reader)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 
@@ -137,6 +126,8 @@ func GetJsonShortAction(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	var reader io.Reader
+
 	if req.URL.Path != "/api/shorten" {
 		http.Error(res, "Wrong route!", http.StatusNotFound)
 
@@ -144,7 +135,20 @@ func GetJsonShortAction(res http.ResponseWriter, req *http.Request) {
 	}
 
 	defer req.Body.Close()
-	b, err := io.ReadAll(req.Body)
+
+	if req.Header.Get(`Content-Encoding`) == `gzip` {
+		gzr, err := gzip.NewReader(req.Body)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		reader = gzr
+		defer gzr.Close()
+	} else {
+		reader = req.Body
+	}
+
+	b, err := io.ReadAll(reader)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 
@@ -153,6 +157,8 @@ func GetJsonShortAction(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Content-Type", "application/json; charset=utf-8")
 	res.Header().Add("Accept", "application/json")
+
+	// res.Header().Set("ContentLength",int64(len(body)))
 
 	if err := json.Unmarshal(b, &j); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
