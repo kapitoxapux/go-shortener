@@ -33,30 +33,30 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 func GzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		var reader io.Reader
+		// var reader io.Reader
 
-		if r.Header.Get(`Content-Encoding`) == `gzip` {
-			gzr, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			reader = gzr
-			defer gzr.Close()
+		// if r.Header.Get(`Content-Encoding`) == `gzip` {
+		// 	gzr, err := gzip.NewReader(r.Body)
+		// 	if err != nil {
+		// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// 		return
+		// 	}
+		// 	reader = gzr
+		// 	defer gzr.Close()
 
-			defer r.Body.Close()
-			body, err := io.ReadAll(reader)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+		// 	defer r.Body.Close()
+		// 	body, err := io.ReadAll(reader)
+		// 	if err != nil {
+		// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// 		return
+		// 	}
 
-			w.Write(body)
-			r.ContentLength = int64(len(body))
+		// 	w.Write(body)
+		// 	r.ContentLength = int64(len(body))
 
-		} else {
-			reader = r.Body
-		}
+		// } else {
+		// 	reader = r.Body
+		// }
 
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			next.ServeHTTP(w, r)
