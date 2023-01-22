@@ -38,32 +38,6 @@ func GzipMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if r.Method == http.MethodPost {
-			var reader io.Reader
-
-			if r.Header.Get(`Content-Encoding`) == `gzip` {
-				gzr, err := gzip.NewReader(r.Body)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-				reader = gzr
-				defer gzr.Close()
-			} else {
-				reader = r.Body
-			}
-
-			defer r.Body.Close()
-			b, err := io.ReadAll(reader)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-
-				return
-			}
-
-			w.Write([]byte(b))
-		}
-
 		gzw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
 			io.WriteString(w, err.Error())
@@ -90,22 +64,23 @@ func SetShortAction(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// var reader io.Reader
+	var reader io.Reader
 
-	// if req.Header.Get(`Content-Encoding`) == `gzip` {
-	// 	gzr, err := gzip.NewReader(req.Body)
-	// 	if err != nil {
-	// 		http.Error(res, err.Error(), http.StatusInternalServerError)
-	// 		return
-	// 	}
-	// 	reader = gzr
-	// 	defer gzr.Close()
-	// } else {
-	// 	reader = req.Body
-	// }
+	if req.Header.Get(`Content-Encoding`) == `gzip` {
+		gzr, err := gzip.NewReader(req.Body)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		reader = gzr
+		defer gzr.Close()
+	} else {
+		reader = req.Body
+	}
 
 	defer req.Body.Close()
-	b, err := io.ReadAll(req.Body)
+
+	b, err := io.ReadAll(reader)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 
@@ -152,8 +127,6 @@ func GetJsonShortAction(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// var reader io.Reader
-
 	if req.URL.Path != "/api/shorten" {
 		http.Error(res, "Wrong route!", http.StatusNotFound)
 
@@ -162,19 +135,21 @@ func GetJsonShortAction(res http.ResponseWriter, req *http.Request) {
 
 	defer req.Body.Close()
 
-	// if req.Header.Get(`Content-Encoding`) == `gzip` {
-	// 	gzr, err := gzip.NewReader(req.Body)
-	// 	if err != nil {
-	// 		http.Error(res, err.Error(), http.StatusInternalServerError)
-	// 		return
-	// 	}
-	// 	reader = gzr
-	// 	defer gzr.Close()
-	// } else {
-	// 	reader = req.Body
-	// }
+	var reader io.Reader
 
-	b, err := io.ReadAll(req.Body)
+	if req.Header.Get(`Content-Encoding`) == `gzip` {
+		gzr, err := gzip.NewReader(req.Body)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		reader = gzr
+		defer gzr.Close()
+	} else {
+		reader = req.Body
+	}
+
+	b, err := io.ReadAll(reader)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 
