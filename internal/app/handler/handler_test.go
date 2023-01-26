@@ -128,7 +128,7 @@ func TestEndpoints_Handle(t *testing.T) {
 			method: "GET",
 			want: want{
 				contentType: "text/plain; charset=utf-8",
-				statusCode:  404,
+				statusCode:  405,
 				bodyContent: "Wrong route!\n",
 			},
 			pattern: os.Getenv("BASE_URL") + "/",
@@ -160,7 +160,7 @@ func TestEndpoints_Handle(t *testing.T) {
 			body:   forTest.LongURL,
 			want: want{
 				contentType: "text/plain; charset=utf-8",
-				statusCode:  404,
+				statusCode:  405,
 				bodyContent: "Wrong route!\n",
 			},
 			pattern: forTest.ShortURL,
@@ -171,7 +171,7 @@ func TestEndpoints_Handle(t *testing.T) {
 			body:   forTest.LongURL,
 			want: want{
 				contentType: "text/plain; charset=utf-8",
-				statusCode:  404,
+				statusCode:  405,
 				bodyContent: "",
 			},
 			pattern: forTest.ShortURL,
@@ -182,7 +182,7 @@ func TestEndpoints_Handle(t *testing.T) {
 			body:   forTest.LongURL,
 			want: want{
 				contentType: "text/plain; charset=utf-8",
-				statusCode:  404,
+				statusCode:  405,
 				bodyContent: "Wrong route!\n",
 			},
 			pattern: os.Getenv("BASE_URL") + "/",
@@ -193,7 +193,7 @@ func TestEndpoints_Handle(t *testing.T) {
 			body:   `{"url":"` + forTest.LongURL + `"}`,
 			want: want{
 				contentType: "text/plain; charset=utf-8",
-				statusCode:  404,
+				statusCode:  405,
 				bodyContent: "Wrong route!\n",
 			},
 			pattern: "/api",
