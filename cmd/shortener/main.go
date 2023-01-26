@@ -30,7 +30,13 @@ func main() {
 		baseURL = *base
 	}
 
-	env := config.SetEnvConf(serverAdress, baseURL, *path)
+	storagePath := os.Getenv("FILE_STORAGE_PATH")
+	if storagePath == "" {
+		os.Setenv("FILE_STORAGE_PATH", *path)
+		storagePath = *path
+	}
+
+	env := config.SetEnvConf(serverAdress, baseURL, storagePath)
 
 	server := &http.Server{
 		Addr:    env.Address,
