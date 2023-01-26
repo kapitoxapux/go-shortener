@@ -14,7 +14,7 @@ func main() {
 
 	addr := flag.String("a", "localhost:8080", "SERVER_ADDRESS")
 	base := flag.String("b", "http://localhost:8080", "BASE_URL")
-	path := flag.String("f", "json.txt", "FILE_STORAGE_PATH")
+	path := flag.String("f", config.GetStoragePath(), "FILE_STORAGE_PATH")
 
 	flag.Parse()
 
@@ -30,13 +30,7 @@ func main() {
 		baseURL = *base
 	}
 
-	storagePath := os.Getenv("FILE_STORAGE_PATH")
-	if storagePath == "" {
-		os.Setenv("FILE_STORAGE_PATH", *path)
-		storagePath = *path
-	}
-
-	env := config.SetEnvConf(serverAdress, baseURL, storagePath)
+	env := config.SetEnvConf(serverAdress, baseURL, *path)
 
 	server := &http.Server{
 		Addr:    env.Address,
