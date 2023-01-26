@@ -12,19 +12,15 @@ type Config struct {
 
 func SetEnvConf(address string, base string, path string) *Config {
 	env := new(Config)
-
-	os.Setenv("SERVER_ADDRESS", address)
-	os.Setenv("BASE_URL", base)
-	os.Setenv("FILE_STORAGE_PATH", path)
-
-	env.Address = os.Getenv("SERVER_ADDRESS")
-	env.Base = os.Getenv("BASE_URL")
-	env.Path = os.Getenv("FILE_STORAGE_PATH")
+	env.Address = address
+	env.Base = base
+	env.Path = path
 
 	return env
 }
 
 func GetStoragePath() string {
 	path := os.Getenv("FILE_STORAGE_PATH")
+
 	return path
 }

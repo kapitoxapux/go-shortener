@@ -27,6 +27,17 @@ type Shorter struct {
 	ID       string
 	LongURL  string `json:"longURL"`
 	ShortURL string `json:"shortURL"`
+	BaseURL  string `json:"baseURL"`
+}
+
+func NewShorter() Shorter {
+	shorter := Shorter{}
+	shorter.ID = ""
+	shorter.LongURL = ""
+	shorter.ShortURL = ""
+	shorter.BaseURL = os.Getenv("BASE_URL") + "/"
+
+	return shorter
 }
 
 func NewSaver(filename string) (*saver, error) {
@@ -59,6 +70,7 @@ func (p *saver) WriteShort(shorter *Shorter) error {
 }
 
 func (p *saver) Close() error {
+
 	return p.file.Close()
 }
 
@@ -75,6 +87,7 @@ func NewReader(filename string) (*loader, error) {
 }
 
 func (c *loader) Close() error {
+
 	return c.file.Close()
 }
 
@@ -88,39 +101,31 @@ func Shortener(url string) string {
 	if paths[b] != nil {
 		return ""
 	}
+
 	return b
 }
 
 func SetShort(link string) *Shorter {
 	pathStorage := config.GetStoragePath()
-
-	shorter := new(Shorter)
-
+	shorter := NewShorter()
 	if config.GetStoragePath() == "" {
-
 		short = ""
 		for short == "" {
 			short = Shortener(link)
 		}
-
 		shorter.ID = short
-		shorter.ShortURL = os.Getenv("BASE_URL") + "/" + short
-
+		shorter.ShortURL = shorter.BaseURL + short
 		shorter.LongURL = link
-
-		paths[short] = shorter
-
+		paths[short] = &shorter
 	} else {
-
 		reader, _ := NewReader(pathStorage)
 		defer reader.Close()
 
 		for reader.scanner.Scan() {
 			data := reader.scanner.Bytes()
-
 			_ = json.Unmarshal(data, &shorter)
 			if link == shorter.LongURL {
-				return shorter
+				return &shorter
 			}
 
 		}
@@ -132,16 +137,13 @@ func SetShort(link string) *Shorter {
 		for short == "" {
 			short = Shortener(link)
 		}
-
 		shorter.ID = short
-		shorter.ShortURL = os.Getenv("BASE_URL") + "/" + short
-
+		shorter.ShortURL = shorter.BaseURL + short
 		shorter.LongURL = link
-
-		_ = saver.WriteShort(shorter)
+		_ = saver.WriteShort(&shorter)
 	}
 
-	return shorter
+	return &shorter
 }
 
 func GetShort(id string) string {
@@ -149,6 +151,7 @@ func GetShort(id string) string {
 	pathStorage := config.GetStoragePath()
 	if pathStorage == "" {
 		if paths[id] != nil {
+
 			return paths[id].ShortURL
 		}
 
@@ -156,7 +159,7 @@ func GetShort(id string) string {
 		reader, _ := NewReader(pathStorage)
 		defer reader.Close()
 
-		shorter := new(Shorter)
+		shorter := NewShorter()
 		for reader.scanner.Scan() {
 			data := reader.scanner.Bytes()
 
@@ -184,7 +187,7 @@ func GetFullURL(id string) string {
 		reader, _ := NewReader(pathStorage)
 		defer reader.Close()
 
-		shorter := new(Shorter)
+		shorter := NewShorter()
 		for reader.scanner.Scan() {
 			data := reader.scanner.Bytes()
 

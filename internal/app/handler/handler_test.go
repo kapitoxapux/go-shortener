@@ -21,7 +21,7 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 	switch req.URL.Path {
 	case "/":
 		if req.Method != http.MethodPost {
-			http.Error(res, "Wrong route!", http.StatusNotFound)
+			http.Error(res, "Wrong route!", http.StatusMethodNotAllowed)
 
 			return
 		}
@@ -47,7 +47,7 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 
 	case "/api/shorten":
 		if req.Method != http.MethodPost {
-			http.Error(res, "Wrong route!", http.StatusNotFound)
+			http.Error(res, "Wrong route!", http.StatusMethodNotAllowed)
 
 			return
 		}
@@ -69,7 +69,7 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 
 	default:
 		if req.Method != http.MethodGet {
-			http.Error(res, "Wrong route!", http.StatusNotFound)
+			http.Error(res, "Wrong route!", http.StatusMethodNotAllowed)
 
 			return
 		}
