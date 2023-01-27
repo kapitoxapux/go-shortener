@@ -15,7 +15,7 @@ var ServerConfig Config
 
 const defaultServerAdress = "localhost:8080"
 const defaultBaseURL = "http://localhost:8080"
-const defaultStoragePath = "json.txt"
+const defaultStoragePath = ""
 
 func SetConfig() Config {
 	addr := flag.String("a", defaultServerAdress, "SERVER_ADDRESS")
