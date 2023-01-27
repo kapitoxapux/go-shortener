@@ -1,6 +1,7 @@
 package config
 
 import (
+	"flag"
 	"os"
 )
 
@@ -10,17 +11,50 @@ type Config struct {
 	Path    string `env:"FILE_STORAGE_PATH"`
 }
 
-func SetEnvConf(address string, base string, path string) *Config {
-	env := new(Config)
-	env.Address = address
-	env.Base = base
-	env.Path = path
+var ServerConfig Config
 
-	return env
+const defaultServerAdress = "localhost:8080"
+const defaultBaseURL = "http://localhost:8080"
+const defaultStoragePath = "json.txt"
+
+func SetConfig() Config {
+	addr := flag.String("a", defaultServerAdress, "SERVER_ADDRESS")
+	base := flag.String("b", defaultBaseURL, "BASE_URL")
+	path := flag.String("f", defaultStoragePath, "FILE_STORAGE_PATH")
+	flag.Parse()
+
+	if os.Getenv("SERVER_ADDRESS") == "" {
+		ServerConfig.Address = *addr
+	} else {
+		ServerConfig.Address = os.Getenv("SERVER_ADDRESS")
+	}
+
+	if os.Getenv("BASE_URL") == "" {
+		ServerConfig.Base = *base
+	} else {
+		ServerConfig.Base = os.Getenv("BASE_URL")
+	}
+
+	if os.Getenv("FILE_STORAGE_PATH") == "" {
+		ServerConfig.Path = *path
+	} else {
+		ServerConfig.Path = os.Getenv("FILE_STORAGE_PATH")
+	}
+
+	return ServerConfig
 }
 
-func GetStoragePath() string {
-	path := os.Getenv("FILE_STORAGE_PATH")
+func GetConfigAddress() string {
 
-	return path
+	return ServerConfig.Address
+}
+
+func GetConfigBase() string {
+
+	return ServerConfig.Base
+}
+
+func GetConfigPath() string {
+
+	return ServerConfig.Path
 }

@@ -35,7 +35,7 @@ func NewShorter() Shorter {
 	shorter.ID = ""
 	shorter.LongURL = ""
 	shorter.ShortURL = ""
-	shorter.BaseURL = os.Getenv("BASE_URL") + "/"
+	shorter.BaseURL = config.GetConfigBase() + "/"
 
 	return shorter
 }
@@ -106,9 +106,9 @@ func Shortener(url string) string {
 }
 
 func SetShort(link string) *Shorter {
-	pathStorage := config.GetStoragePath()
+	pathStorage := config.GetConfigPath()
 	shorter := NewShorter()
-	if config.GetStoragePath() == "" {
+	if pathStorage == "" {
 		short = ""
 		for short == "" {
 			short = Shortener(link)
@@ -148,7 +148,7 @@ func SetShort(link string) *Shorter {
 
 func GetShort(id string) string {
 	shortURL := ""
-	pathStorage := config.GetStoragePath()
+	pathStorage := config.GetConfigPath()
 	if pathStorage == "" {
 		if paths[id] != nil {
 
@@ -177,7 +177,7 @@ func GetShort(id string) string {
 
 func GetFullURL(id string) string {
 	longURL := ""
-	pathStorage := config.GetStoragePath()
+	pathStorage := config.GetConfigPath()
 	if pathStorage == "" {
 		if paths[id] != nil {
 			return paths[id].LongURL

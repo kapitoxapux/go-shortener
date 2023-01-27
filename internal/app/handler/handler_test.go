@@ -7,7 +7,6 @@ import (
 	"myapp/internal/app/storage"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
@@ -87,27 +86,11 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.Header().Set("Location", storage.GetFullURL(formated))
 		res.WriteHeader(http.StatusTemporaryRedirect)
-
 	}
-
 }
 
 func TestEndpoints_Handle(t *testing.T) {
-
-	serverAdress := os.Getenv("SERVER_ADDRESS")
-	if serverAdress == "" {
-		serverAdress = "localhost:8080"
-	}
-
-	baseURL := os.Getenv("BASE_URL")
-	if baseURL == "" {
-		baseURL = "http://" + serverAdress
-	}
-
-	path := "json.txt"
-
-	_ = config.SetEnvConf(serverAdress, baseURL, path)
-
+	config.SetConfig()
 	forTest = storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
 
 	type want struct {
@@ -131,7 +114,7 @@ func TestEndpoints_Handle(t *testing.T) {
 				statusCode:  405,
 				bodyContent: "Wrong route!\n",
 			},
-			pattern: os.Getenv("BASE_URL") + "/",
+			pattern: config.GetConfigBase() + "/",
 		},
 		{
 			name:   "simple test #2",
@@ -142,7 +125,7 @@ func TestEndpoints_Handle(t *testing.T) {
 				statusCode:  201,
 				bodyContent: forTest.ShortURL,
 			},
-			pattern: os.Getenv("BASE_URL") + "/",
+			pattern: config.GetConfigBase() + "/",
 		},
 		{
 			name:   "simple test #3",
@@ -185,7 +168,7 @@ func TestEndpoints_Handle(t *testing.T) {
 				statusCode:  405,
 				bodyContent: "Wrong route!\n",
 			},
-			pattern: os.Getenv("BASE_URL") + "/",
+			pattern: config.GetConfigBase() + "/",
 		},
 		{
 			name:   "simple test #7",
@@ -207,7 +190,7 @@ func TestEndpoints_Handle(t *testing.T) {
 				statusCode:  201,
 				bodyContent: `{"result":"` + forTest.ShortURL + `"}`,
 			},
-			pattern: os.Getenv("BASE_URL") + "/api/shorten",
+			pattern: config.GetConfigBase() + "/api/shorten",
 		},
 	}
 
