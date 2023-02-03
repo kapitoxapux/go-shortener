@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"os"
 	"testing"
 )
 
@@ -13,8 +14,8 @@ func Test_getFullUrl(t *testing.T) {
 	}{
 		{
 			name:    "unique check",
-			link:    "http://localhost:8080/some_text_to_test_2",
-			shorter: SetShort("http://localhost:8080/some_text_to_test_2"),
+			link:    os.Getenv("BASE_URL") + "/some_text_to_test_2",
+			shorter: SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2"),
 			equel:   false,
 		},
 	}
@@ -36,8 +37,8 @@ func Test_getShort(t *testing.T) {
 	}{
 		{
 			name:    "unique check",
-			link:    "http://localhost:8080/some_text_to_test_1",
-			shorter: SetShort("http://localhost:8080/some_text_to_test_1"),
+			link:    os.Getenv("BASE_URL") + "/some_text_to_test_1",
+			shorter: SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1"),
 			equel:   false,
 		},
 	}
@@ -52,8 +53,8 @@ func Test_getShort(t *testing.T) {
 
 func Test_setShort(t *testing.T) {
 
-	testNegative := SetShort("http://localhost:8080/some_text_to_test_1")
-	testPositive := SetShort("http://localhost:8080/some_text_to_test_2")
+	testNegative := SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
+	testPositive := SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
 
 	tests := []struct {
 		name    string
@@ -63,13 +64,13 @@ func Test_setShort(t *testing.T) {
 	}{
 		{
 			name:    "new Shorter",
-			link:    "http://localhost:8080/some_text_to_test_2",
+			link:    os.Getenv("BASE_URL") + "/some_text_to_test_2",
 			want:    testPositive,
 			wantErr: false,
 		},
 		{
 			name:    "catch error",
-			link:    "http://localhost:8080/some_text_to_test_1",
+			link:    os.Getenv("BASE_URL") + "/some_text_to_test_1",
 			want:    testNegative,
 			wantErr: true,
 		},

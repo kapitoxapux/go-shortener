@@ -1,8 +1,9 @@
 package handler
 
 import (
+	"compress/gzip"
+	"encoding/json"
 	"io"
-
 	"myapp/internal/app/storage"
 	"net/http"
 	"strings"
@@ -14,10 +15,45 @@ type Handler struct {
 	*chi.Mux
 }
 
-func PostAction(res http.ResponseWriter, req *http.Request) {
+type JSONShorter struct {
+	URL string `json:"url"`
+}
 
+type gzipWriter struct {
+	http.ResponseWriter
+	Writer io.Writer
+}
+
+func (w gzipWriter) Write(b []byte) (int, error) {
+
+	return w.Writer.Write(b)
+}
+
+func GzipMiddleware(next http.Handler) http.Handler {
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		gzw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+
+			return
+		}
+
+		defer gzw.Close()
+
+		w.Header().Set("Content-Encoding", "gzip")
+		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gzw}, r)
+	})
+}
+
+func SetShortAction(res http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
-		http.Error(res, "Only POST requests are allowed for this route!", http.StatusNotFound)
+		http.Error(res, "Only POST requests are allowed for this route!", http.StatusMethodNotAllowed)
 
 		return
 	}
@@ -28,33 +64,50 @@ func PostAction(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	b, err := io.ReadAll(req.Body)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+	var reader io.Reader
 
-		return
+	if req.Header.Get(`Content-Encoding`) == `gzip` {
+		gzr, err := gzip.NewReader(req.Body)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+
+			return
+		}
+
+		reader = gzr
+		defer gzr.Close()
+	} else {
+		reader = req.Body
 	}
 
-	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	res.WriteHeader(http.StatusCreated)
+	defer req.Body.Close()
 
-	short := storage.SetShort(string(b))
+	if req.ContentLength > 0 {
+		b, err := io.ReadAll(reader)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
 
-	res.Write([]byte(short.ShortURL))
+			return
+		}
 
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		res.WriteHeader(http.StatusCreated)
+		short := storage.SetShort(string(b))
+		res.Write([]byte(short.ShortURL))
+	} else {
+		http.Error(res, "Empty body!", http.StatusBadRequest)
+	}
 }
 
-func GetAction(res http.ResponseWriter, req *http.Request) {
-
+func GetShortAction(res http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
-		http.Error(res, "Only GET requests are allowed for this route", http.StatusNotFound)
+		http.Error(res, "Only GET requests are allowed for this route", http.StatusMethodNotAllowed)
 
 		return
 	}
 
 	part := req.URL.Path
 	formated := strings.Replace(part, "/", "", -1)
-
 	sh := storage.GetShort(formated)
 	if sh == "" {
 		http.Error(res, "Url not founded!", http.StatusBadRequest)
@@ -65,17 +118,68 @@ func GetAction(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	res.Header().Set("Location", storage.GetFullURL(formated))
 	res.WriteHeader(http.StatusTemporaryRedirect)
+}
 
+func GetJSONShortAction(res http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(res, "Only POST requests are allowed for this route!", http.StatusMethodNotAllowed)
+
+		return
+	}
+
+	if req.URL.Path != "/api/shorten" {
+		http.Error(res, "Wrong route!", http.StatusNotFound)
+
+		return
+	}
+
+	defer req.Body.Close()
+
+	var reader io.Reader
+	if req.Header.Get(`Content-Encoding`) == `gzip` {
+		gzr, err := gzip.NewReader(req.Body)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		reader = gzr
+		defer gzr.Close()
+	} else {
+		reader = req.Body
+	}
+
+	if req.ContentLength > 0 {
+		b, err := io.ReadAll(reader)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+
+			return
+		}
+
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		res.Header().Add("Accept", "application/json")
+
+		j := new(JSONShorter)
+		if err := json.Unmarshal(b, &j); err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+		}
+
+		short := storage.SetShort(j.URL)
+		res.WriteHeader(http.StatusCreated)
+		res.Write([]byte(`{"result":"` + short.ShortURL + `"}`))
+	} else {
+		http.Error(res, "Empty body!", http.StatusBadRequest)
+	}
 }
 
 func NewRoutes() *Handler {
-
-	chi := &Handler{
+	mux := &Handler{
 		Mux: chi.NewMux(),
 	}
 
-	chi.Get("/{`\\w+$`}", GetAction)
-	chi.Post("/", PostAction)
+	mux.Post("/", SetShortAction)
+	mux.Get("/{`\\w+$`}", GetShortAction)
+	mux.Post("/api/shorten", GetJSONShortAction)
 
-	return chi
+	return mux
 }
