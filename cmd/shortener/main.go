@@ -9,7 +9,6 @@ import (
 )
 
 func main() {
-
 	config.SetConfig()
 
 	address := config.GetConfigAddress()

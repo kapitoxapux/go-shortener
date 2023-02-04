@@ -2,11 +2,21 @@ package storage
 
 import (
 	"bufio"
+
+	// "crypto/aes"
+	// "crypto/cipher"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"math/big"
 	"math/rand"
 	"myapp/internal/app/config"
+
+	// "net/http"
 	"os"
+	// "time"
 )
 
 var short string = ""
@@ -23,11 +33,17 @@ type loader struct {
 	scanner *bufio.Scanner
 }
 
+type Signer struct {
+	SignID uint32 `json:"signID"`
+	Sign   []byte `json:"sign"`
+}
+
 type Shorter struct {
 	ID       string
 	LongURL  string `json:"longURL"`
 	ShortURL string `json:"shortURL"`
 	BaseURL  string `json:"baseURL"`
+	Signer
 }
 
 func NewShorter() Shorter {
@@ -36,8 +52,20 @@ func NewShorter() Shorter {
 	shorter.LongURL = ""
 	shorter.ShortURL = ""
 	shorter.BaseURL = config.GetConfigBase() + "/"
+	shorter.Signer.SignID = 0
+	shorter.Signer.Sign = nil
 
 	return shorter
+}
+
+func ShorterSignerSet(short string) Signer {
+	data, _ := hex.DecodeString(short)
+	h := hmac.New(sha256.New, config.Secretkey)
+	h.Write(data)
+	sign := h.Sum(nil)
+	id := binary.BigEndian.Uint32(sign[:4])
+
+	return Signer{id, sign}
 }
 
 func NewSaver(filename string) (*saver, error) {
@@ -106,9 +134,8 @@ func Shortener(url string) string {
 }
 
 func SetShort(link string) *Shorter {
-	pathStorage := config.GetConfigPath()
 	shorter := NewShorter()
-	if pathStorage == "" {
+	if pathStorage := config.GetConfigPath(); pathStorage == "" {
 		short = ""
 		for short == "" {
 			short = Shortener(link)
@@ -116,6 +143,9 @@ func SetShort(link string) *Shorter {
 		shorter.ID = short
 		shorter.ShortURL = shorter.BaseURL + short
 		shorter.LongURL = link
+		shorter.Signer.Sign = ShorterSignerSet(short).Sign
+		shorter.Signer.SignID = ShorterSignerSet(short).SignID
+
 		paths[short] = &shorter
 	} else {
 		reader, _ := NewReader(pathStorage)
@@ -140,6 +170,9 @@ func SetShort(link string) *Shorter {
 		shorter.ID = short
 		shorter.ShortURL = shorter.BaseURL + short
 		shorter.LongURL = link
+		shorter.Signer.Sign = ShorterSignerSet(short).Sign
+		shorter.Signer.SignID = ShorterSignerSet(short).SignID
+
 		_ = saver.WriteShort(&shorter)
 	}
 
@@ -201,4 +234,22 @@ func GetFullURL(id string) string {
 	}
 
 	return longURL
+}
+
+func GetFullList() map[string]*Shorter {
+	if pathStorage := config.GetConfigPath(); pathStorage != "" {
+		reader, _ := NewReader(pathStorage)
+		defer reader.Close()
+
+		for reader.scanner.Scan() {
+			data := reader.scanner.Bytes()
+
+			shorter := NewShorter()
+			_ = json.Unmarshal(data, &shorter)
+			paths[shorter.ID] = &shorter
+		}
+
+	}
+
+	return paths
 }

@@ -13,6 +13,8 @@ type Config struct {
 
 var ServerConfig Config
 
+var Secretkey = []byte("самый секретный секрет")
+
 const defaultServerAdress = "localhost:8080"
 const defaultBaseURL = "http://localhost:8080"
 const defaultStoragePath = ""
@@ -23,22 +25,22 @@ func SetConfig() Config {
 	path := flag.String("f", defaultStoragePath, "FILE_STORAGE_PATH")
 	flag.Parse()
 
-	if os.Getenv("SERVER_ADDRESS") == "" {
+	if address := os.Getenv("SERVER_ADDRESS"); address == "" {
 		ServerConfig.Address = *addr
 	} else {
-		ServerConfig.Address = os.Getenv("SERVER_ADDRESS")
+		ServerConfig.Address = address
 	}
 
-	if os.Getenv("BASE_URL") == "" {
+	if base_url := os.Getenv("BASE_URL"); base_url == "" {
 		ServerConfig.Base = *base
 	} else {
-		ServerConfig.Base = os.Getenv("BASE_URL")
+		ServerConfig.Base = base_url
 	}
 
-	if os.Getenv("FILE_STORAGE_PATH") == "" {
+	if storage_path := os.Getenv("FILE_STORAGE_PATH"); storage_path == "" {
 		ServerConfig.Path = *path
 	} else {
-		ServerConfig.Path = os.Getenv("FILE_STORAGE_PATH")
+		ServerConfig.Path = storage_path
 	}
 
 	return ServerConfig
