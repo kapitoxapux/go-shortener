@@ -55,29 +55,6 @@ func SetUserCookie(req *http.Request, sign []byte) *http.Cookie {
 	}
 }
 
-func GzipMiddleware(next http.Handler) http.Handler {
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		gzw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-
-			return
-		}
-
-		defer gzw.Close()
-
-		w.Header().Set("Content-Encoding", "gzip")
-
-		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gzw}, r)
-	})
-}
-
 func GetSignerCheck(sign []byte, cookie string) bool {
 	return hmac.Equal(sign, TokenCheck(cookie))
 }
@@ -119,6 +96,29 @@ func SetCookieToken(sign []byte) string {
 	dst := aesgcm.Seal(nil, nonce, sign, nil) // симметрично зашифровываем
 
 	return hex.EncodeToString(dst)
+}
+
+func GzipMiddleware(next http.Handler) http.Handler {
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		gzw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+
+			return
+		}
+
+		defer gzw.Close()
+
+		w.Header().Set("Content-Encoding", "gzip")
+
+		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gzw}, r)
+	})
 }
 
 func SetShortAction(res http.ResponseWriter, req *http.Request) {
@@ -191,12 +191,12 @@ func GetShortAction(res http.ResponseWriter, req *http.Request) {
 	part := req.URL.Path
 	formated := strings.Replace(part, "/", "", -1)
 
-	cookie, _ := req.Cookie("user_id")
-	if cookie == nil {
-		http.Error(res, "No Authorized!", http.StatusUnauthorized)
+	// cookie, _ := req.Cookie("user_id")
+	// if cookie == nil {
+	// 	http.Error(res, "No Authorized!", http.StatusUnauthorized)
 
-		return
-	}
+	// 	return
+	// }
 
 	sh := storage.GetShort(formated)
 	if sh == "" {
