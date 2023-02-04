@@ -191,13 +191,6 @@ func GetShortAction(res http.ResponseWriter, req *http.Request) {
 	part := req.URL.Path
 	formated := strings.Replace(part, "/", "", -1)
 
-	// cookie, _ := req.Cookie("user_id")
-	// if cookie == nil {
-	// 	http.Error(res, "No Authorized!", http.StatusUnauthorized)
-
-	// 	return
-	// }
-
 	sh := storage.GetShort(formated)
 	if sh == "" {
 		http.Error(res, "Url not founded!", http.StatusBadRequest)
@@ -290,7 +283,7 @@ func GetUserURLAction(res http.ResponseWriter, req *http.Request) {
 	list := []JSONObject{}
 	cookie, _ := req.Cookie("user_id")
 	if cookie == nil {
-		http.Error(res, "No Authorized!", http.StatusUnauthorized)
+		http.Error(res, "No content!", http.StatusNoContent)
 
 		return
 	} else {
