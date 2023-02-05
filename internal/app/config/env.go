@@ -9,6 +9,7 @@ type Config struct {
 	Address string `env:"SERVER_ADDRESS"`
 	Base    string `env:"BASE_URL"`
 	Path    string `env:"FILE_STORAGE_PATH"`
+	DB      string `env:"DATABASE_DSN"`
 }
 
 var ServerConfig Config
@@ -18,11 +19,13 @@ var Secretkey = []byte("самый секретный секрет")
 const defaultServerAdress = "localhost:8080"
 const defaultBaseURL = "http://localhost:8080"
 const defaultStoragePath = ""
+const defaultStorageDB = "host=localhost port=5432 user=postgres password= dbname=postgres sslmode=disable"
 
 func SetConfig() Config {
 	addr := flag.String("a", defaultServerAdress, "SERVER_ADDRESS")
 	base := flag.String("b", defaultBaseURL, "BASE_URL")
 	path := flag.String("f", defaultStoragePath, "FILE_STORAGE_PATH")
+	db := flag.String("d", defaultStorageDB, "DATABASE_DSN")
 	flag.Parse()
 
 	if address := os.Getenv("SERVER_ADDRESS"); address == "" {
@@ -43,6 +46,12 @@ func SetConfig() Config {
 		ServerConfig.Path = storage_path
 	}
 
+	if storage_db := os.Getenv("DATABASE_DSN"); storage_db == "" {
+		ServerConfig.DB = *db
+	} else {
+		ServerConfig.DB = storage_db
+	}
+
 	return ServerConfig
 }
 
@@ -59,4 +68,9 @@ func GetConfigBase() string {
 func GetConfigPath() string {
 
 	return ServerConfig.Path
+}
+
+func GetStorageDB() string {
+
+	return ServerConfig.DB
 }

@@ -311,6 +311,20 @@ func GetUserURLAction(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func GetPingAction(res http.ResponseWriter, req *http.Request) {
+	if status, err := storage.ConnectionDBCheck(); status != http.StatusOK {
+		http.Error(res, err, http.StatusInternalServerError)
+
+		return
+	} else {
+		res.WriteHeader(http.StatusOK)
+		res.Write([]byte("OK"))
+
+		return
+	}
+
+}
+
 func NewRoutes() *Handler {
 	mux := &Handler{
 		Mux: chi.NewMux(),
@@ -320,6 +334,7 @@ func NewRoutes() *Handler {
 	mux.Get("/{`\\w+$`}", GetShortAction)
 	mux.Post("/api/shorten", GetJSONShortAction)
 	mux.Get("/api/user/urls", GetUserURLAction)
+	mux.Get("/ping", GetPingAction)
 
 	return mux
 }

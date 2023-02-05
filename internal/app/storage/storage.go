@@ -3,8 +3,6 @@ package storage
 import (
 	"bufio"
 
-	// "crypto/aes"
-	// "crypto/cipher"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/binary"
@@ -14,9 +12,12 @@ import (
 	"math/rand"
 	"myapp/internal/app/config"
 
-	// "net/http"
 	"os"
-	// "time"
+
+	"database/sql"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
+	// _ "github.com/mattn/go-sqlite3"
 )
 
 var short string = ""
@@ -252,4 +253,25 @@ func GetFullList() map[string]*Shorter {
 	}
 
 	return paths
+}
+
+func ConnectionDBCheck() (int, string) {
+	db, err := sql.Open("pgx", config.GetStorageDB())
+	if err != nil {
+
+		return 500, err.Error()
+	}
+
+	// close database
+	defer db.Close()
+
+	// check db
+	err = db.Ping()
+	if err != nil {
+
+		return 500, err.Error()
+	}
+
+	return 200, ""
+
 }
