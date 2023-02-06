@@ -30,6 +30,16 @@ type JSONShorter struct {
 	URL string `json:"url"`
 }
 
+type JSONBatcher struct {
+	UrlID   string `json:"correlation_id"`
+	LongURL string `json:"original_url"`
+}
+
+type JSONResultBatcher struct {
+	UrlID    string `json:"correlation_id"`
+	ShortURL string `json:"short_url"`
+}
+
 type gzipWriter struct {
 	http.ResponseWriter
 	Writer io.Writer
@@ -326,6 +336,90 @@ func GetPingAction(res http.ResponseWriter, req *http.Request) {
 
 }
 
+func GetBatchAction(res http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(res, "Only POST requests are allowed for this route!", http.StatusMethodNotAllowed)
+
+		return
+	}
+
+	if req.URL.Path != "/api/shorten/batch" {
+		http.Error(res, "Wrong route!", http.StatusNotFound)
+
+		return
+	}
+
+	defer req.Body.Close()
+
+	var reader io.Reader
+	if req.Header.Get(`Content-Encoding`) == `gzip` {
+		gzr, err := gzip.NewReader(req.Body)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		reader = gzr
+		defer gzr.Close()
+	} else {
+		reader = req.Body
+	}
+
+	if req.ContentLength > 0 {
+		b, err := io.ReadAll(reader)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+
+			return
+		}
+
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		res.Header().Add("Accept", "application/json")
+
+		list := []JSONBatcher{}
+
+		// множество обьектов в теле нужен цикл
+		if err := json.Unmarshal(b, &list); err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+		}
+
+		resultsObj := []JSONResultBatcher{}
+
+		for i, obj := range list {
+			short := storage.SetShort(obj.LongURL)
+
+			if i == 1 {
+				cookie, _ := req.Cookie("user_id")
+				if cookie == nil {
+					http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
+				} else {
+					if !GetSignerCheck(short.Signer.Sign, cookie.Value) {
+						http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
+					}
+
+				}
+			}
+
+			resultBatcher := new(JSONResultBatcher)
+			resultBatcher.UrlID = obj.UrlID
+			resultBatcher.ShortURL = short.ShortURL
+
+			resultsObj = append(resultsObj, *resultBatcher)
+		}
+
+		res.WriteHeader(http.StatusCreated)
+		if len(resultsObj) == 0 {
+			http.Error(res, "No content!", http.StatusNoContent)
+
+			return
+		} else {
+			p, _ := json.Marshal(resultsObj)
+			res.Write([]byte(p))
+		}
+	} else {
+		http.Error(res, "Empty body!", http.StatusBadRequest)
+	}
+}
+
 func NewRoutes() *Handler {
 	mux := &Handler{
 		Mux: chi.NewMux(),
@@ -336,6 +430,7 @@ func NewRoutes() *Handler {
 	mux.Post("/api/shorten", GetJSONShortAction)
 	mux.Get("/api/user/urls", GetUserURLAction)
 	mux.Get("/ping", GetPingAction)
+	mux.Get("/api/shorten/batch", GetBatchAction)
 
 	return mux
 }
