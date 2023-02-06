@@ -172,9 +172,7 @@ func SetShortAction(res http.ResponseWriter, req *http.Request) {
 		}
 
 		short, duplicate := storage.SetShort(string(b))
-
-		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		if duplicate != false {
+		if duplicate {
 			res.WriteHeader(http.StatusConflict)
 		} else {
 			res.WriteHeader(http.StatusCreated)
