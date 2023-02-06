@@ -31,12 +31,12 @@ type JSONShorter struct {
 }
 
 type JSONBatcher struct {
-	UrlID   string `json:"correlation_id"`
+	URLID   string `json:"correlation_id"`
 	LongURL string `json:"original_url"`
 }
 
 type JSONResultBatcher struct {
-	UrlID    string `json:"correlation_id"`
+	URLID    string `json:"correlation_id"`
 	ShortURL string `json:"short_url"`
 }
 
@@ -46,8 +46,8 @@ type gzipWriter struct {
 }
 
 type JSONObject struct {
-	Short_url    string `json:"short_url"`
-	Original_url string `json:"original_url"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
 func (w gzipWriter) Write(b []byte) (int, error) {
@@ -312,8 +312,8 @@ func GetUserURLAction(res http.ResponseWriter, req *http.Request) {
 		for _, short := range storage.GetFullList() {
 			if GetSignerCheck(short.Signer.Sign, cookie.Value) {
 				obj := JSONObject{}
-				obj.Short_url = short.ShortURL
-				obj.Original_url = short.LongURL
+				obj.ShortURL = short.ShortURL
+				obj.OriginalURL = short.LongURL
 				list = append(list, obj)
 			}
 
@@ -408,7 +408,7 @@ func GetBatchAction(res http.ResponseWriter, req *http.Request) {
 			}
 
 			resultBatcher := new(JSONResultBatcher)
-			resultBatcher.UrlID = obj.UrlID
+			resultBatcher.URLID = obj.URLID
 			resultBatcher.ShortURL = short.ShortURL
 
 			resultsObj = append(resultsObj, *resultBatcher)

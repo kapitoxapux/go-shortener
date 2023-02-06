@@ -34,22 +34,22 @@ func SetConfig() Config {
 		ServerConfig.Address = address
 	}
 
-	if base_url := os.Getenv("BASE_URL"); base_url == "" {
+	if baseURL := os.Getenv("BASE_URL"); baseURL == "" {
 		ServerConfig.Base = *base
 	} else {
-		ServerConfig.Base = base_url
+		ServerConfig.Base = baseURL
 	}
 
-	if storage_path := os.Getenv("FILE_STORAGE_PATH"); storage_path == "" {
+	if storagePath := os.Getenv("FILE_STORAGE_PATH"); storagePath == "" {
 		ServerConfig.Path = *path
 	} else {
-		ServerConfig.Path = storage_path
+		ServerConfig.Path = storagePath
 	}
 
-	if storage_db := os.Getenv("DATABASE_DSN"); storage_db == "" {
+	if storageDB := os.Getenv("DATABASE_DSN"); storageDB == "" {
 		ServerConfig.DB = *db
 	} else {
-		ServerConfig.DB = storage_db
+		ServerConfig.DB = storageDB
 	}
 
 	return ServerConfig
