@@ -142,13 +142,19 @@ func Shortener(url string) string {
 
 func SetShort(link string) (*Shorter, bool) {
 	shorter := NewShorter()
-	duplicate := true
+	duplicate := false
 	if status, _ := ConnectionDBCheck(); status == 200 {
 		repo := repository.NewRepository(config.GetStorageDB())
 		model, state := repo.ShowShortenerByLong(link)
-		if state != "Model found" {
+		if state == "Model found" {
+			duplicate = true
+			shorter.ID = model.ID
+			shorter.ShortURL = model.ShortURL
+			shorter.LongURL = model.LongURL
+			shorter.Signer.Sign = model.Sign
+			shorter.Signer.SignID = model.SignID
+		} else {
 			s := &models.Shortener{}
-			duplicate = false
 			short := Shortener(link)
 			s.ID = short
 			s.ShortURL = shorter.BaseURL + short
@@ -167,13 +173,6 @@ func SetShort(link string) (*Shorter, bool) {
 			shorter.LongURL = m.LongURL
 			shorter.Signer.Sign = m.Sign
 			shorter.Signer.SignID = m.SignID
-
-		} else {
-			shorter.ID = model.ID
-			shorter.ShortURL = model.ShortURL
-			shorter.LongURL = model.LongURL
-			shorter.Signer.Sign = model.Sign
-			shorter.Signer.SignID = model.SignID
 		}
 	} else {
 		if pathStorage := config.GetConfigPath(); pathStorage == "" {
