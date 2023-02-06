@@ -430,7 +430,7 @@ func NewRoutes() *Handler {
 	mux.Post("/api/shorten", GetJSONShortAction)
 	mux.Get("/api/user/urls", GetUserURLAction)
 	mux.Get("/ping", GetPingAction)
-	mux.Get("/api/shorten/batch", GetBatchAction)
+	mux.Post("/api/shorten/batch", GetBatchAction)
 
 	return mux
 }
