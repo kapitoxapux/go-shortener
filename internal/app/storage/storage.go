@@ -2,6 +2,8 @@ package storage
 
 import (
 	"bufio"
+	"log"
+	"time"
 
 	"crypto/hmac"
 	"crypto/sha256"
@@ -11,12 +13,16 @@ import (
 	"math/big"
 	"math/rand"
 	"myapp/internal/app/config"
+	"myapp/internal/app/models"
+	"myapp/internal/app/repository"
 
 	"os"
 
 	"database/sql"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	// "gorm.io/driver/postgres"
+	// "gorm.io/gorm"
 	// _ "github.com/mattn/go-sqlite3"
 )
 
@@ -134,47 +140,73 @@ func Shortener(url string) string {
 	return b
 }
 
+var s models.Shortener
+
 func SetShort(link string) *Shorter {
 	shorter := NewShorter()
-	if pathStorage := config.GetConfigPath(); pathStorage == "" {
-		short = ""
-		for short == "" {
-			short = Shortener(link)
+	if status, _ := ConnectionDBCheck(); status == 200 {
+
+		short := Shortener(link)
+		s.ID = short
+		s.ShortURL = shorter.BaseURL + short
+		s.LongURL = link
+		s.Sign = ShorterSignerSet(short).Sign
+		s.SignID = ShorterSignerSet(short).SignID
+		s.CreatedAt = time.Now()
+
+		repo := repository.NewRepository(config.GetStorageDB())
+		model, err := repo.CreateShortener(&s)
+		if err != nil {
+			log.Fatal("Model saving repository failed %w", err.Error())
 		}
-		shorter.ID = short
-		shorter.ShortURL = shorter.BaseURL + short
-		shorter.LongURL = link
-		shorter.Signer.Sign = ShorterSignerSet(short).Sign
-		shorter.Signer.SignID = ShorterSignerSet(short).SignID
 
-		paths[short] = &shorter
+		shorter.ID = model.ID
+		shorter.ShortURL = model.ShortURL
+		shorter.LongURL = model.LongURL
+		shorter.Signer.Sign = model.Sign
+		shorter.Signer.SignID = model.SignID
+
 	} else {
-		reader, _ := NewReader(pathStorage)
-		defer reader.Close()
+		if pathStorage := config.GetConfigPath(); pathStorage == "" {
+			short = ""
+			for short == "" {
+				short = Shortener(link)
+			}
+			shorter.ID = short
+			shorter.ShortURL = shorter.BaseURL + short
+			shorter.LongURL = link
+			shorter.Signer.Sign = ShorterSignerSet(short).Sign
+			shorter.Signer.SignID = ShorterSignerSet(short).SignID
 
-		for reader.scanner.Scan() {
-			data := reader.scanner.Bytes()
-			_ = json.Unmarshal(data, &shorter)
-			if link == shorter.LongURL {
-				return &shorter
+			paths[short] = &shorter
+		} else {
+			reader, _ := NewReader(pathStorage)
+			defer reader.Close()
+
+			for reader.scanner.Scan() {
+				data := reader.scanner.Bytes()
+				_ = json.Unmarshal(data, &shorter)
+				if link == shorter.LongURL {
+					return &shorter
+				}
+
 			}
 
+			saver, _ := NewSaver(pathStorage)
+			defer saver.Close()
+
+			short = ""
+			for short == "" {
+				short = Shortener(link)
+			}
+			shorter.ID = short
+			shorter.ShortURL = shorter.BaseURL + short
+			shorter.LongURL = link
+			shorter.Signer.Sign = ShorterSignerSet(short).Sign
+			shorter.Signer.SignID = ShorterSignerSet(short).SignID
+
+			_ = saver.WriteShort(&shorter)
 		}
-
-		saver, _ := NewSaver(pathStorage)
-		defer saver.Close()
-
-		short = ""
-		for short == "" {
-			short = Shortener(link)
-		}
-		shorter.ID = short
-		shorter.ShortURL = shorter.BaseURL + short
-		shorter.LongURL = link
-		shorter.Signer.Sign = ShorterSignerSet(short).Sign
-		shorter.Signer.SignID = ShorterSignerSet(short).SignID
-
-		_ = saver.WriteShort(&shorter)
 	}
 
 	return &shorter
@@ -182,28 +214,37 @@ func SetShort(link string) *Shorter {
 
 func GetShort(id string) string {
 	shortURL := ""
-	pathStorage := config.GetConfigPath()
-	if pathStorage == "" {
-		if paths[id] != nil {
-
-			return paths[id].ShortURL
+	if status, _ := ConnectionDBCheck(); status == 200 {
+		repo := repository.NewRepository(config.GetStorageDB())
+		if result, err := repo.ShowShortener(id); err != nil {
+			log.Fatal("Короткая ссылка не найдена, произошла ошибка: %w", err)
+		} else {
+			shortURL = result.ShortURL
 		}
-
 	} else {
-		reader, _ := NewReader(pathStorage)
-		defer reader.Close()
+		pathStorage := config.GetConfigPath()
+		if pathStorage == "" {
+			if paths[id] != nil {
 
-		shorter := NewShorter()
-		for reader.scanner.Scan() {
-			data := reader.scanner.Bytes()
+				return paths[id].ShortURL
+			}
 
-			_ = json.Unmarshal(data, &shorter)
-			if id == shorter.ID {
-				return shorter.ShortURL
+		} else {
+			reader, _ := NewReader(pathStorage)
+			defer reader.Close()
+
+			shorter := NewShorter()
+			for reader.scanner.Scan() {
+				data := reader.scanner.Bytes()
+
+				_ = json.Unmarshal(data, &shorter)
+				if id == shorter.ID {
+					return shorter.ShortURL
+				}
+
 			}
 
 		}
-
 	}
 
 	return shortURL
@@ -211,45 +252,72 @@ func GetShort(id string) string {
 
 func GetFullURL(id string) string {
 	longURL := ""
-	pathStorage := config.GetConfigPath()
-	if pathStorage == "" {
-		if paths[id] != nil {
-			return paths[id].LongURL
+	if status, _ := ConnectionDBCheck(); status == 200 {
+		repo := repository.NewRepository(config.GetStorageDB())
+		if result, err := repo.ShowShortener(id); err != nil {
+			log.Fatal("Полная ссылка не найдена, произошла ошибка: %w", err)
+		} else {
+			longURL = result.LongURL
 		}
-
 	} else {
-		reader, _ := NewReader(pathStorage)
-		defer reader.Close()
+		pathStorage := config.GetConfigPath()
+		if pathStorage == "" {
+			if paths[id] != nil {
+				return paths[id].LongURL
+			}
 
-		shorter := NewShorter()
-		for reader.scanner.Scan() {
-			data := reader.scanner.Bytes()
+		} else {
+			reader, _ := NewReader(pathStorage)
+			defer reader.Close()
 
-			_ = json.Unmarshal(data, &shorter)
-			if id == shorter.ID {
-				return shorter.LongURL
+			shorter := NewShorter()
+			for reader.scanner.Scan() {
+				data := reader.scanner.Bytes()
+
+				_ = json.Unmarshal(data, &shorter)
+				if id == shorter.ID {
+					return shorter.LongURL
+				}
+
 			}
 
 		}
-
 	}
 
 	return longURL
 }
 
 func GetFullList() map[string]*Shorter {
-	if pathStorage := config.GetConfigPath(); pathStorage != "" {
-		reader, _ := NewReader(pathStorage)
-		defer reader.Close()
+	if status, _ := ConnectionDBCheck(); status == 200 {
+		repo := repository.NewRepository(config.GetStorageDB())
+		if results, err := repo.ShowShorteners(); err != nil {
+			log.Fatal("Произошла ошибка получения списка: %w", err)
+		} else {
+			for _, model := range results {
+				shorter := NewShorter()
+				shorter.ID = model.ID
+				shorter.ShortURL = model.ShortURL
+				shorter.LongURL = model.LongURL
+				shorter.Sign = model.Sign
+				shorter.SignID = model.SignID
 
-		for reader.scanner.Scan() {
-			data := reader.scanner.Bytes()
-
-			shorter := NewShorter()
-			_ = json.Unmarshal(data, &shorter)
-			paths[shorter.ID] = &shorter
+				paths[model.ID] = &shorter
+			}
 		}
+	} else {
+		if pathStorage := config.GetConfigPath(); pathStorage != "" {
+			reader, _ := NewReader(pathStorage)
+			defer reader.Close()
 
+			for reader.scanner.Scan() {
+				data := reader.scanner.Bytes()
+
+				shorter := NewShorter()
+				_ = json.Unmarshal(data, &shorter)
+				paths[shorter.ID] = &shorter
+			}
+
+		}
 	}
 
 	return paths
@@ -273,5 +341,4 @@ func ConnectionDBCheck() (int, string) {
 	}
 
 	return 200, ""
-
 }
