@@ -6,7 +6,7 @@ import (
 
 type Shortener struct {
 	ID        string    `gorm:"index", json:"id"`
-	LongURL   string    `gorm:"not null", json:"long_url"`
+	LongURL   string    `gorm:"index:idx_long,unique", json:"long_url"`
 	ShortURL  string    `gorm:"not null", json:"short_url"`
 	BaseURL   string    `gorm:"not null", json:"base_url"`
 	SignID    uint32    `gorm:"not null,uint", json:"sign_id"`

@@ -91,7 +91,7 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 
 func TestEndpoints_Handle(t *testing.T) {
 	config.SetConfig()
-	forTest = storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
+	forTest, _ = storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
 
 	type want struct {
 		contentType string

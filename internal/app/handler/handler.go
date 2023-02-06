@@ -171,9 +171,14 @@ func SetShortAction(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		short := storage.SetShort(string(b))
+		short, duplicate := storage.SetShort(string(b))
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		if duplicate != false {
+			res.WriteHeader(http.StatusConflict)
+		} else {
+			res.WriteHeader(http.StatusCreated)
+		}
 
 		cookie, _ := req.Cookie("user_id")
 		if cookie == nil {
@@ -185,7 +190,6 @@ func SetShortAction(res http.ResponseWriter, req *http.Request) {
 
 		}
 
-		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte(short.ShortURL))
 	} else {
 		http.Error(res, "Empty body!", http.StatusBadRequest)
@@ -259,7 +263,14 @@ func GetJSONShortAction(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 		}
 
-		short := storage.SetShort(j.URL)
+		short, duplicate := storage.SetShort(j.URL)
+
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		if duplicate != false {
+			res.WriteHeader(http.StatusConflict)
+		} else {
+			res.WriteHeader(http.StatusCreated)
+		}
 
 		cookie, _ := req.Cookie("user_id")
 		if cookie == nil {
@@ -271,7 +282,6 @@ func GetJSONShortAction(res http.ResponseWriter, req *http.Request) {
 
 		}
 
-		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte(`{"result":"` + short.ShortURL + `"}`))
 	} else {
 		http.Error(res, "Empty body!", http.StatusBadRequest)
@@ -385,7 +395,7 @@ func GetBatchAction(res http.ResponseWriter, req *http.Request) {
 		resultsObj := []JSONResultBatcher{}
 
 		for i, obj := range list {
-			short := storage.SetShort(obj.LongURL)
+			short, _ := storage.SetShort(obj.LongURL)
 
 			if i == 1 {
 				cookie, _ := req.Cookie("user_id")

@@ -14,6 +14,7 @@ type Repository interface {
 	CreateShortener(m *models.Shortener) (*models.Shortener, error)
 	ShowShortener(id string) (*models.Shortener, error)
 	ShowShorteners() ([]models.Shortener, error)
+	ShowShortenerByLong(link string) (*models.Shortener, string)
 }
 
 type repository struct {
@@ -28,6 +29,7 @@ func (r *repository) CreateShortener(m *models.Shortener) (*models.Shortener, er
 }
 
 func (r *repository) ShowShortener(id string) (*models.Shortener, error) {
+
 	model := &models.Shortener{}
 	if err := r.db.First(model, "id = ?", []byte(id)).Error; err != nil {
 		return nil, err
@@ -50,6 +52,14 @@ func (r *repository) ShowShortenerBySign(m *models.Shortener) (*models.Shortener
 		return nil, err
 	}
 	return m, nil
+}
+
+func (r *repository) ShowShortenerByLong(link string) (*models.Shortener, string) {
+	model := &models.Shortener{}
+	if err := r.db.First(model, "long_url = ?", []byte(link)).Error; err != nil {
+		return nil, err.Error()
+	}
+	return model, "Model found"
 }
 
 func NewRepository(dns string) Repository {

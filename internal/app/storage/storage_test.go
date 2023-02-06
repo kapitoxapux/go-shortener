@@ -6,6 +6,7 @@ import (
 )
 
 func Test_getFullUrl(t *testing.T) {
+	s2, _ := SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
 	tests := []struct {
 		name    string
 		link    string
@@ -15,7 +16,7 @@ func Test_getFullUrl(t *testing.T) {
 		{
 			name:    "unique check",
 			link:    os.Getenv("BASE_URL") + "/some_text_to_test_2",
-			shorter: SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2"),
+			shorter: s2,
 			equel:   false,
 		},
 	}
@@ -29,6 +30,7 @@ func Test_getFullUrl(t *testing.T) {
 }
 
 func Test_getShort(t *testing.T) {
+	s1, _ := SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
 	tests := []struct {
 		name    string
 		link    string
@@ -38,7 +40,7 @@ func Test_getShort(t *testing.T) {
 		{
 			name:    "unique check",
 			link:    os.Getenv("BASE_URL") + "/some_text_to_test_1",
-			shorter: SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1"),
+			shorter: s1,
 			equel:   false,
 		},
 	}
@@ -53,8 +55,8 @@ func Test_getShort(t *testing.T) {
 
 func Test_setShort(t *testing.T) {
 
-	testNegative := SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
-	testPositive := SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
+	testNegative, _ := SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
+	testPositive, _ := SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
 
 	tests := []struct {
 		name    string

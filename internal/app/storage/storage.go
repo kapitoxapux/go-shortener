@@ -140,32 +140,41 @@ func Shortener(url string) string {
 	return b
 }
 
-var s models.Shortener
-
-func SetShort(link string) *Shorter {
+func SetShort(link string) (*Shorter, bool) {
 	shorter := NewShorter()
+	duplicate := true
 	if status, _ := ConnectionDBCheck(); status == 200 {
-
-		short := Shortener(link)
-		s.ID = short
-		s.ShortURL = shorter.BaseURL + short
-		s.LongURL = link
-		s.Sign = ShorterSignerSet(short).Sign
-		s.SignID = ShorterSignerSet(short).SignID
-		s.CreatedAt = time.Now()
-
 		repo := repository.NewRepository(config.GetStorageDB())
-		model, err := repo.CreateShortener(&s)
-		if err != nil {
-			log.Fatal("Model saving repository failed %w", err.Error())
+		model, state := repo.ShowShortenerByLong(link)
+		if state != "Model found" {
+			s := &models.Shortener{}
+			duplicate = false
+			short := Shortener(link)
+			s.ID = short
+			s.ShortURL = shorter.BaseURL + short
+			s.LongURL = link
+			s.Sign = ShorterSignerSet(short).Sign
+			s.SignID = ShorterSignerSet(short).SignID
+			s.CreatedAt = time.Now()
+
+			m, err := repo.CreateShortener(s)
+			if err != nil {
+				log.Fatal("Model saving repository failed %w", err.Error())
+			}
+
+			shorter.ID = m.ID
+			shorter.ShortURL = m.ShortURL
+			shorter.LongURL = m.LongURL
+			shorter.Signer.Sign = m.Sign
+			shorter.Signer.SignID = m.SignID
+
+		} else {
+			shorter.ID = model.ID
+			shorter.ShortURL = model.ShortURL
+			shorter.LongURL = model.LongURL
+			shorter.Signer.Sign = model.Sign
+			shorter.Signer.SignID = model.SignID
 		}
-
-		shorter.ID = model.ID
-		shorter.ShortURL = model.ShortURL
-		shorter.LongURL = model.LongURL
-		shorter.Signer.Sign = model.Sign
-		shorter.Signer.SignID = model.SignID
-
 	} else {
 		if pathStorage := config.GetConfigPath(); pathStorage == "" {
 			short = ""
@@ -187,7 +196,7 @@ func SetShort(link string) *Shorter {
 				data := reader.scanner.Bytes()
 				_ = json.Unmarshal(data, &shorter)
 				if link == shorter.LongURL {
-					return &shorter
+					return &shorter, duplicate
 				}
 
 			}
@@ -209,7 +218,7 @@ func SetShort(link string) *Shorter {
 		}
 	}
 
-	return &shorter
+	return &shorter, duplicate
 }
 
 func GetShort(id string) string {
