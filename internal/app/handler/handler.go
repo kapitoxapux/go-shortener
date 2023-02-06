@@ -172,11 +172,6 @@ func SetShortAction(res http.ResponseWriter, req *http.Request) {
 		}
 
 		short, duplicate := storage.SetShort(string(b))
-		if duplicate {
-			res.WriteHeader(http.StatusConflict)
-		} else {
-			res.WriteHeader(http.StatusCreated)
-		}
 
 		cookie, _ := req.Cookie("user_id")
 		if cookie == nil {
@@ -186,6 +181,12 @@ func SetShortAction(res http.ResponseWriter, req *http.Request) {
 				http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
 			}
 
+		}
+
+		if duplicate {
+			res.WriteHeader(http.StatusConflict)
+		} else {
+			res.WriteHeader(http.StatusCreated)
 		}
 
 		res.Write([]byte(short.ShortURL))
@@ -262,11 +263,6 @@ func GetJSONShortAction(res http.ResponseWriter, req *http.Request) {
 		}
 
 		short, duplicate := storage.SetShort(j.URL)
-		if duplicate {
-			res.WriteHeader(http.StatusConflict)
-		} else {
-			res.WriteHeader(http.StatusCreated)
-		}
 
 		cookie, _ := req.Cookie("user_id")
 		if cookie == nil {
@@ -276,6 +272,12 @@ func GetJSONShortAction(res http.ResponseWriter, req *http.Request) {
 				http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
 			}
 
+		}
+
+		if duplicate {
+			res.WriteHeader(http.StatusConflict)
+		} else {
+			res.WriteHeader(http.StatusCreated)
 		}
 
 		res.Write([]byte(`{"result":"` + short.ShortURL + `"}`))
