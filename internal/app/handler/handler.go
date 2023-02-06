@@ -264,9 +264,7 @@ func GetJSONShortAction(res http.ResponseWriter, req *http.Request) {
 		}
 
 		short, duplicate := storage.SetShort(j.URL)
-
-		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		if duplicate != false {
+		if !duplicate {
 			res.WriteHeader(http.StatusConflict)
 		} else {
 			res.WriteHeader(http.StatusCreated)
