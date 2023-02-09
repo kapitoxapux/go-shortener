@@ -2,28 +2,23 @@ package storage
 
 import (
 	"bufio"
-	"log"
-	"time"
-
 	"crypto/hmac"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"math/big"
 	"math/rand"
+	"os"
+	"time"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
+
 	"myapp/internal/app/config"
 	"myapp/internal/app/models"
 	"myapp/internal/app/repository"
-
-	"os"
-
-	"database/sql"
-
-	_ "github.com/jackc/pgx/v5/stdlib"
-	// "gorm.io/driver/postgres"
-	// "gorm.io/gorm"
-	// _ "github.com/mattn/go-sqlite3"
 )
 
 var short string = ""
@@ -140,11 +135,11 @@ func Shortener(url string) string {
 	return b
 }
 
-func SetShort(link string) (*Shorter, bool) {
+func SetShort(repo repository.Repository, link string) (*Shorter, bool) {
 	shorter := NewShorter()
 	duplicate := false
-	if status, _ := ConnectionDBCheck(); status == 200 {
-		repo := repository.NewRepository(config.GetStorageDB())
+
+	if repo != nil {
 		model, state := repo.ShowShortenerByLong(link)
 		if state == "Model found" {
 			duplicate = true
@@ -154,7 +149,7 @@ func SetShort(link string) (*Shorter, bool) {
 			shorter.Signer.Sign = model.Sign
 			shorter.Signer.SignID = model.SignID
 		} else {
-			s := &models.Shortener{}
+			s := &models.Links{}
 			short := Shortener(link)
 			s.ID = short
 			s.ShortURL = shorter.BaseURL + short
@@ -220,10 +215,9 @@ func SetShort(link string) (*Shorter, bool) {
 	return &shorter, duplicate
 }
 
-func GetShort(id string) string {
+func GetShort(repo repository.Repository, id string) string {
 	shortURL := ""
-	if status, _ := ConnectionDBCheck(); status == 200 {
-		repo := repository.NewRepository(config.GetStorageDB())
+	if repo != nil {
 		if result, err := repo.ShowShortener(id); err != nil {
 			log.Fatal("Короткая ссылка не найдена, произошла ошибка: %w", err)
 		} else {
@@ -258,10 +252,9 @@ func GetShort(id string) string {
 	return shortURL
 }
 
-func GetFullURL(id string) string {
+func GetFullURL(repo repository.Repository, id string) string {
 	longURL := ""
-	if status, _ := ConnectionDBCheck(); status == 200 {
-		repo := repository.NewRepository(config.GetStorageDB())
+	if repo != nil {
 		if result, err := repo.ShowShortener(id); err != nil {
 			log.Fatal("Полная ссылка не найдена, произошла ошибка: %w", err)
 		} else {
@@ -295,9 +288,8 @@ func GetFullURL(id string) string {
 	return longURL
 }
 
-func GetFullList() map[string]*Shorter {
-	if status, _ := ConnectionDBCheck(); status == 200 {
-		repo := repository.NewRepository(config.GetStorageDB())
+func GetFullList(repo repository.Repository) map[string]*Shorter {
+	if repo != nil {
 		if results, err := repo.ShowShorteners(); err != nil {
 			log.Fatal("Произошла ошибка получения списка: %w", err)
 		} else {

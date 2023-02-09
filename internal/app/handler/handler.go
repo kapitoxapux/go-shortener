@@ -2,7 +2,6 @@ package handler
 
 import (
 	"compress/gzip"
-
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
@@ -10,20 +9,26 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
-
-	"myapp/internal/app/config"
-
-	"myapp/internal/app/storage"
 	"net/http"
 	"strings"
-
 	"time"
 
-	"github.com/go-chi/chi/v5"
+	// "github.com/go-chi/chi/v5"
+	// "github.com/go-chi/chi/middleware"
+
+	"myapp/internal/app/config"
+	"myapp/internal/app/repository"
+	"myapp/internal/app/storage"
 )
 
 type Handler struct {
-	*chi.Mux
+	repo repository.Repository
+}
+
+func NewHandler(repo repository.Repository) *Handler {
+	return &Handler{
+		repo: repo,
+	}
 }
 
 type JSONShorter struct {
@@ -132,7 +137,7 @@ func GzipMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func SetShortAction(res http.ResponseWriter, req *http.Request) {
+func (h *Handler) SetShortAction(res http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(res, "Only POST requests are allowed for this route!", http.StatusMethodNotAllowed)
 
@@ -171,7 +176,7 @@ func SetShortAction(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		short, duplicate := storage.SetShort(string(b))
+		short, duplicate := storage.SetShort(h.repo, string(b))
 
 		cookie, _ := req.Cookie("user_id")
 		if cookie == nil {
@@ -195,7 +200,7 @@ func SetShortAction(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func GetShortAction(res http.ResponseWriter, req *http.Request) {
+func (h *Handler) GetShortAction(res http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
 		http.Error(res, "Only GET requests are allowed for this route", http.StatusMethodNotAllowed)
 
@@ -205,7 +210,7 @@ func GetShortAction(res http.ResponseWriter, req *http.Request) {
 	part := req.URL.Path
 	formated := strings.Replace(part, "/", "", -1)
 
-	sh := storage.GetShort(formated)
+	sh := storage.GetShort(h.repo, formated)
 	if sh == "" {
 		http.Error(res, "Url not founded!", http.StatusBadRequest)
 
@@ -213,12 +218,12 @@ func GetShortAction(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	res.Header().Set("Location", storage.GetFullURL(formated))
+	res.Header().Set("Location", storage.GetFullURL(h.repo, formated))
 	res.WriteHeader(http.StatusTemporaryRedirect)
 
 }
 
-func GetJSONShortAction(res http.ResponseWriter, req *http.Request) {
+func (h *Handler) GetJSONShortAction(res http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(res, "Only POST requests are allowed for this route!", http.StatusMethodNotAllowed)
 
@@ -262,7 +267,7 @@ func GetJSONShortAction(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 		}
 
-		short, duplicate := storage.SetShort(j.URL)
+		short, duplicate := storage.SetShort(h.repo, j.URL)
 
 		cookie, _ := req.Cookie("user_id")
 		if cookie == nil {
@@ -286,7 +291,7 @@ func GetJSONShortAction(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func GetUserURLAction(res http.ResponseWriter, req *http.Request) {
+func (h *Handler) GetUserURLAction(res http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
 		http.Error(res, "Only GET requests are allowed for this route", http.StatusMethodNotAllowed)
 
@@ -309,7 +314,7 @@ func GetUserURLAction(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 		// пройтись по всем записям и забрать нужные объекты используя куки юзера
-		for _, short := range storage.GetFullList() {
+		for _, short := range storage.GetFullList(h.repo) {
 			if GetSignerCheck(short.Signer.Sign, cookie.Value) {
 				obj := JSONObject{}
 				obj.ShortURL = short.ShortURL
@@ -330,7 +335,7 @@ func GetUserURLAction(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func GetPingAction(res http.ResponseWriter, req *http.Request) {
+func (h *Handler) GetPingAction(res http.ResponseWriter, req *http.Request) {
 	if status, err := storage.ConnectionDBCheck(); status != http.StatusOK {
 		http.Error(res, err, http.StatusInternalServerError)
 
@@ -344,7 +349,7 @@ func GetPingAction(res http.ResponseWriter, req *http.Request) {
 
 }
 
-func GetBatchAction(res http.ResponseWriter, req *http.Request) {
+func (h *Handler) GetBatchAction(res http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(res, "Only POST requests are allowed for this route!", http.StatusMethodNotAllowed)
 
@@ -393,7 +398,7 @@ func GetBatchAction(res http.ResponseWriter, req *http.Request) {
 		resultsObj := []JSONResultBatcher{}
 
 		for i, obj := range list {
-			short, _ := storage.SetShort(obj.LongURL)
+			short, _ := storage.SetShort(h.repo, obj.LongURL)
 
 			if i == 1 {
 				cookie, _ := req.Cookie("user_id")
@@ -426,19 +431,4 @@ func GetBatchAction(res http.ResponseWriter, req *http.Request) {
 	} else {
 		http.Error(res, "Empty body!", http.StatusBadRequest)
 	}
-}
-
-func NewRoutes() *Handler {
-	mux := &Handler{
-		Mux: chi.NewMux(),
-	}
-
-	mux.Post("/", SetShortAction)
-	mux.Get("/{`\\w+$`}", GetShortAction)
-	mux.Post("/api/shorten", GetJSONShortAction)
-	mux.Get("/api/user/urls", GetUserURLAction)
-	mux.Get("/ping", GetPingAction)
-	mux.Post("/api/shorten/batch", GetBatchAction)
-
-	return mux
 }
