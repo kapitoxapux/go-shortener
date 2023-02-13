@@ -112,38 +112,42 @@ func SetCookieToken(sign []byte) string {
 }
 
 func GzipMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			gzw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+			if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+				gzw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
 
-				return
+					return
+				}
+
+				w.Header().Set("Content-Encoding", "gzip")
+				w = gzipWriter{
+					ResponseWriter: w,
+					Writer:         gzw,
+				}
+
+				defer gzw.Close()
 			}
 
-			w.Header().Set("Content-Encoding", "gzip")
-			w = gzipWriter{
-				ResponseWriter: w,
-				Writer:         gzw,
-			}
-			defer gzw.Close()
-		}
+			if r.Header.Get("Content-Encoding") == "gzip" {
+				gzr, err := gzip.NewReader(r.Body)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
 
-		if r.Header.Get(`Content-Encoding`) == `gzip` {
-			gzr, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 
-				return
+				r.Body = gzr
+
+				defer gzr.Close()
 			}
 
-			r.Body = gzr
-			defer gzr.Close()
-		}
-
-		next.ServeHTTP(w, r)
-	})
+			next.ServeHTTP(w, r)
+		},
+	)
 }
 
 func ConnectionDBCheck() (int, string) {

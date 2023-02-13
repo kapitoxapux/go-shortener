@@ -69,7 +69,7 @@ func (a *App) Run() error {
 
 	a.httpServer = &http.Server{
 		Addr:    address,
-		Handler: route,
+		Handler: handler.GzipMiddleware(route),
 	}
 
 	go func() {
