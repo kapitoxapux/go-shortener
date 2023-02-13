@@ -13,14 +13,24 @@ import (
 
 	"myapp/internal/app/config"
 	"myapp/internal/app/repository"
-	"myapp/internal/app/storage"
+	"myapp/internal/app/service"
 )
 
-var forTest *storage.Shorter
+var forTest *service.Shorter
 var repo repository.Repository
 
+type Service struct {
+	Storage service.Storage
+}
+
+func NewService() *Service {
+	return &Service{}
+}
+
+var Srv = NewService()
+
 func testCustomAction(res http.ResponseWriter, req *http.Request) {
-	if status, _ := storage.ConnectionDBCheck(); status == 200 {
+	if status, _ := ConnectionDBCheck(); status == http.StatusOK {
 		repo = repository.NewRepository(config.GetStorageDB())
 	} else {
 		repo = nil
@@ -85,7 +95,7 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 		part := req.URL.Path
 		formated := strings.Replace(part, "/", "", -1)
 
-		sh := storage.GetShort(repo, formated)
+		sh := Srv.Storage.GetShort(formated)
 		if sh == "" {
 			http.Error(res, "Url not founded!", http.StatusBadRequest)
 
@@ -93,7 +103,7 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 		}
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		res.Header().Set("Location", storage.GetFullURL(repo, formated))
+		res.Header().Set("Location", Srv.Storage.GetFullURL(formated))
 		res.WriteHeader(http.StatusTemporaryRedirect)
 	}
 }
@@ -101,13 +111,13 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 func TestEndpoints_Handle(t *testing.T) {
 	config.SetConfig()
 
-	if status, _ := storage.ConnectionDBCheck(); status == 200 {
+	if status, _ := ConnectionDBCheck(); status == http.StatusOK {
 		repo = repository.NewRepository(config.GetStorageDB())
 	} else {
 		repo = nil
 	}
 
-	forTest, _ = storage.SetShort(repo, "https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
+	forTest, _ = Srv.Storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
 
 	type want struct {
 		contentType string

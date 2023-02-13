@@ -2,7 +2,10 @@ package storage
 
 import (
 	"log"
+	"time"
+
 	"myapp/internal/app/config"
+	"myapp/internal/app/models"
 	"myapp/internal/app/repository"
 	"myapp/internal/app/service"
 )
@@ -20,18 +23,46 @@ func NewDB() *DB {
 	}
 }
 
-func (s *DB) SetShort(link string) (*service.Shorter, bool) {
+func (db *DB) SetShort(link string) (*service.Shorter, bool) {
 	shorter := service.NewShorter()
 	duplicate := false
 
-	shorter = s.repo.ShowShortenerByLong(link)
+	model, state := db.repo.ShowShortenerByLong(link)
+	if state == "Model found" {
+		duplicate = true
+		shorter.ID = model.ID
+		shorter.ShortURL = model.ShortURL
+		shorter.LongURL = model.LongURL
+		shorter.Signer.Sign = model.Sign
+		shorter.Signer.SignID = model.SignID
+	} else {
+		s := &models.Link{}
+		short := Shortener(link)
+		s.ID = short
+		s.ShortURL = shorter.BaseURL + short
+		s.LongURL = link
+		s.Sign = service.ShorterSignerSet(short).Sign
+		s.SignID = service.ShorterSignerSet(short).SignID
+		s.CreatedAt = time.Now()
+
+		m, err := db.repo.CreateShortener(s)
+		if err != nil {
+			log.Fatal("Model saving repository failed %w", err.Error())
+		}
+
+		shorter.ID = m.ID
+		shorter.ShortURL = m.ShortURL
+		shorter.LongURL = m.LongURL
+		shorter.Signer.Sign = m.Sign
+		shorter.Signer.SignID = m.SignID
+	}
 
 	return &shorter, duplicate
 }
 
-func (s *service.Storage) GetShort(id string) string {
+func (db *DB) GetShort(id string) string {
 	shortURL := ""
-	if result, err := s.repo.ShowShortener(id); err != nil {
+	if result, err := db.repo.ShowShortener(id); err != nil {
 		log.Fatal("Короткая ссылка не найдена, произошла ошибка: %w", err)
 	} else {
 		shortURL = result.ShortURL
@@ -40,9 +71,9 @@ func (s *service.Storage) GetShort(id string) string {
 	return shortURL
 }
 
-func (s *service.Storage) GetFullURL(id string) string {
+func (db *DB) GetFullURL(id string) string {
 	longURL := ""
-	if result, err := s.repo.ShowShortener(id); err != nil {
+	if result, err := db.repo.ShowShortener(id); err != nil {
 		log.Fatal("Полная ссылка не найдена, произошла ошибка: %w", err)
 	} else {
 		longURL = result.LongURL
@@ -51,8 +82,10 @@ func (s *service.Storage) GetFullURL(id string) string {
 	return longURL
 }
 
-func (s *service.Storage) GetFullList() map[string]*service.Shorter {
-	if results, err := s.repo.ShowShorteners(); err != nil {
+func (db *DB) GetFullList() map[string]*service.Shorter {
+	paths := map[string]*service.Shorter{}
+
+	if results, err := db.repo.ShowShorteners(); err != nil {
 		log.Fatal("Произошла ошибка получения списка: %w", err)
 	} else {
 		for _, model := range results {
@@ -63,9 +96,29 @@ func (s *service.Storage) GetFullList() map[string]*service.Shorter {
 			shorter.Sign = model.Sign
 			shorter.SignID = model.SignID
 
-			db[model.ID] = &shorter
+			paths[model.ID] = &shorter
 		}
 	}
 
-	return db
+	return paths
 }
+
+// func (s *DB) ConnectionDBCheck() (int, string) {
+// 	db, err := sql.Open("pgx", config.GetStorageDB())
+// 	if err != nil {
+
+// 		return 500, err.Error()
+// 	}
+
+// 	// close database
+// 	defer db.Close()
+
+// 	// check db
+// 	err = db.Ping()
+// 	if err != nil {
+
+// 		return 500, err.Error()
+// 	}
+
+// 	return 200, ""
+// }

@@ -3,9 +3,9 @@ package service
 import (
 	"crypto/hmac"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/binary"
 	"encoding/hex"
+
 	"myapp/internal/app/config"
 )
 
@@ -60,24 +60,4 @@ func ShorterSignerSet(short string) Signer {
 	id := binary.BigEndian.Uint32(sign[:4])
 
 	return Signer{id, sign}
-}
-
-func ConnectionDBCheck() (int, string) {
-	db, err := sql.Open("pgx", config.GetStorageDB())
-	if err != nil {
-
-		return 500, err.Error()
-	}
-
-	// close database
-	defer db.Close()
-
-	// check db
-	err = db.Ping()
-	if err != nil {
-
-		return 500, err.Error()
-	}
-
-	return 200, ""
 }

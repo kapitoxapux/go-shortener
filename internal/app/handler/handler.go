@@ -6,15 +6,13 @@ import (
 	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
 	"time"
-
-	// "github.com/go-chi/chi/v5"
-	// "github.com/go-chi/chi/middleware"
 
 	"myapp/internal/app/config"
 	"myapp/internal/app/service"
@@ -146,6 +144,26 @@ func GzipMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func ConnectionDBCheck() (int, string) {
+	db, err := sql.Open("pgx", config.GetStorageDB())
+	if err != nil {
+
+		return 500, err.Error()
+	}
+
+	// close database
+	defer db.Close()
+
+	// check db
+	err = db.Ping()
+	if err != nil {
+
+		return 500, err.Error()
+	}
+
+	return 200, ""
 }
 
 func (h *Handler) SetShortAction(res http.ResponseWriter, req *http.Request) {
@@ -318,7 +336,7 @@ func (h *Handler) GetUserURLAction(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handler) GetPingAction(res http.ResponseWriter, req *http.Request) {
-	if status, err := h.service.Storage.ConnectionDBCheck(); status != http.StatusOK {
+	if status, err := ConnectionDBCheck(); status != http.StatusOK {
 		http.Error(res, err, http.StatusInternalServerError)
 
 		return

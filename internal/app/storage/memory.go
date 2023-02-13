@@ -3,6 +3,7 @@ package storage
 import (
 	"math/big"
 	"math/rand"
+
 	"myapp/internal/app/service"
 )
 
@@ -55,9 +56,9 @@ func (s *InMemDB) SetShort(link string) (*service.Shorter, bool) {
 
 func (s *InMemDB) GetShort(id string) string {
 	shortURL := ""
-	if db[id] != nil {
+	if s.db[id] != nil {
 
-		return db[id].ShortURL
+		return s.db[id].ShortURL
 	}
 
 	return shortURL
@@ -67,7 +68,7 @@ func (s *InMemDB) GetFullURL(id string) string {
 	longURL := ""
 	if s.db[id] != nil {
 
-		return db[id].LongURL
+		return s.db[id].LongURL
 	}
 
 	return longURL
@@ -76,3 +77,8 @@ func (s *InMemDB) GetFullURL(id string) string {
 func (s *InMemDB) GetFullList() map[string]*service.Shorter {
 	return s.db
 }
+
+// func (s *InMemDB) ConnectionDBCheck() (int, string) {
+
+// 	return 404, ""
+// }

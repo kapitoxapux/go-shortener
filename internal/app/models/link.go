@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-type Links struct {
+type Link struct {
 	ID        string    `gorm:"index" json:"id"`
 	LongURL   string    `gorm:"index:idx_long,unique" json:"long_url"`
 	ShortURL  string    `gorm:"not null" json:"short_url"`

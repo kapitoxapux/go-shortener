@@ -10,26 +10,26 @@ import (
 )
 
 type Repository interface {
-	CreateShortener(m *models.Links) (*models.Links, error)
-	ShowShortener(id string) (*models.Links, error)
-	ShowShorteners() ([]models.Links, error)
-	ShowShortenerByLong(link string) (*models.Links, string)
+	CreateShortener(m *models.Link) (*models.Link, error)
+	ShowShortener(id string) (*models.Link, error)
+	ShowShorteners() ([]models.Link, error)
+	ShowShortenerByLong(link string) (*models.Link, string)
 }
 
 type repository struct {
 	db *gorm.DB
 }
 
-func (r *repository) CreateShortener(m *models.Links) (*models.Links, error) {
+func (r *repository) CreateShortener(m *models.Link) (*models.Link, error) {
 	if err := r.db.Create(m).Error; err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (r *repository) ShowShortener(id string) (*models.Links, error) {
+func (r *repository) ShowShortener(id string) (*models.Link, error) {
 
-	model := &models.Links{}
+	model := &models.Link{}
 	if err := r.db.First(model, "id = ?", []byte(id)).Error; err != nil {
 		return nil, err
 	}
@@ -37,8 +37,8 @@ func (r *repository) ShowShortener(id string) (*models.Links, error) {
 	return model, nil
 }
 
-func (r *repository) ShowShorteners() ([]models.Links, error) {
-	models := []models.Links{}
+func (r *repository) ShowShorteners() ([]models.Link, error) {
+	models := []models.Link{}
 	if err := r.db.Find(&models).Error; err != nil {
 		return nil, err
 	}
@@ -46,15 +46,15 @@ func (r *repository) ShowShorteners() ([]models.Links, error) {
 	return models, nil
 }
 
-func (r *repository) ShowShortenerBySign(m *models.Links) (*models.Links, error) {
+func (r *repository) ShowShortenerBySign(m *models.Link) (*models.Link, error) {
 	if err := r.db.Select(m).Where(m.Sign).Error; err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (r *repository) ShowShortenerByLong(link string) (*models.Links, string) {
-	model := &models.Links{}
+func (r *repository) ShowShortenerByLong(link string) (*models.Link, string) {
+	model := &models.Link{}
 	if err := r.db.First(model, "long_url = ?", []byte(link)).Error; err != nil {
 		return nil, err.Error()
 	}
@@ -67,8 +67,8 @@ func NewRepository(dns string) Repository {
 		log.Fatal("Gorm repository failed %w", err.Error())
 	}
 
-	if exist := db.Migrator().HasTable(&models.Links{}); !exist {
-		db.Migrator().CreateTable(&models.Links{})
+	if exist := db.Migrator().HasTable(&models.Link{}); !exist {
+		db.Migrator().CreateTable(&models.Link{})
 	}
 
 	return &repository{db}

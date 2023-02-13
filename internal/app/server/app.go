@@ -12,12 +12,9 @@ import (
 
 	"myapp/internal/app/config"
 	"myapp/internal/app/handler"
-	"myapp/internal/app/repository"
 	"myapp/internal/app/service"
 	"myapp/internal/app/storage"
 )
-
-var repo repository.Repository
 
 type App struct {
 	httpServer *http.Server
@@ -27,24 +24,19 @@ type App struct {
 func NewApp() *App {
 
 	db := GetDB()
-	service := service.NewService(*db)
-
-	// if status, _ := storage.ConnectionDBCheck(); status == 200 {
-	// 	repo = repository.NewRepository(config.GetStorageDB())
-	// } else {
-	// 	repo = nil
-	// }
+	service := service.NewService(db)
 
 	return &App{
 		service: service,
 	}
 }
 
-func GetDB() *service.Storage {
+func GetDB() service.Storage {
 
 	config.SetConfig()
 
-	if status, _ := service.ConnectionDBCheck(); status == 200 {
+	if status, _ := handler.ConnectionDBCheck(); status == http.StatusOK {
+		// if db := config.GetStorageDB(); db != "" {
 		return storage.NewDB()
 	}
 
