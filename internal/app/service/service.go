@@ -27,7 +27,7 @@ type Storage interface {
 	GetShort(id string) string
 	GetFullURL(id string) string
 	GetFullList() map[string]*Shorter
-	ConnectionDBCheck() (int, string)
+	// ConnectionDBCheck() (int, string)
 }
 
 type Service struct {

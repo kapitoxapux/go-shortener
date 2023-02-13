@@ -7,13 +7,13 @@ import (
 )
 
 type InMemDB struct {
-	MemoryDB service.Storage
+	db map[string]*service.Shorter
 }
 
-func NewInMemDB() *service.Storage {
+func NewInMemDB() *InMemDB {
 
-	return &service.Storage{
-		MemoryDB: storage,
+	return &InMemDB{
+		db: make(map[string]*service.Shorter),
 	}
 }
 
@@ -34,7 +34,7 @@ func Shortener(url string) string {
 	return b
 }
 
-func (s *service.Storage) SetShort(link string) (*service.Shorter, bool) {
+func (s *InMemDB) SetShort(link string) (*service.Shorter, bool) {
 	shorter := service.NewShorter()
 	duplicate := false
 
@@ -48,12 +48,12 @@ func (s *service.Storage) SetShort(link string) (*service.Shorter, bool) {
 	shorter.Signer.Sign = service.ShorterSignerSet(short).Sign
 	shorter.Signer.SignID = service.ShorterSignerSet(short).SignID
 
-	db[short] = &shorter
+	s.db[short] = &shorter
 
 	return &shorter, duplicate
 }
 
-func (s *service.Storage) GetShort(id string) string {
+func (s *InMemDB) GetShort(id string) string {
 	shortURL := ""
 	if db[id] != nil {
 
@@ -63,9 +63,9 @@ func (s *service.Storage) GetShort(id string) string {
 	return shortURL
 }
 
-func (s *service.Storage) GetFullURL(id string) string {
+func (s *InMemDB) GetFullURL(id string) string {
 	longURL := ""
-	if db[id] != nil {
+	if s.db[id] != nil {
 
 		return db[id].LongURL
 	}
@@ -73,6 +73,6 @@ func (s *service.Storage) GetFullURL(id string) string {
 	return longURL
 }
 
-func (s *service.Storage) GetFullList() map[string]*service.Shorter {
-	return db
+func (s *InMemDB) GetFullList() map[string]*service.Shorter {
+	return s.db
 }

@@ -12,11 +12,11 @@ type FileDB struct {
 	pathStorage string
 }
 
-func NewFileDB() *service.Storage {
+func NewFileDB() *FileDB {
 
 	pathStorage := config.GetConfigPath()
 
-	return &service.Storage{
+	return &FileDB{
 		pathStorage: pathStorage,
 	}
 }
@@ -84,12 +84,12 @@ func (c *loader) Close() error {
 	return c.file.Close()
 }
 
-func (s *service.Service) GetShort(id string) string {
+func (s *FileDB) GetShort(id string) string {
 	shortURL := ""
 	reader, _ := NewReader(pathStorage)
 	defer reader.Close()
 
-	shorter := s.service.NewShorter()
+	shorter := NewShorter()
 	for reader.scanner.Scan() {
 		data := reader.scanner.Bytes()
 
@@ -103,7 +103,7 @@ func (s *service.Service) GetShort(id string) string {
 	return shortURL
 }
 
-func (s *service.Storage) GetFullURL(id string) string {
+func (s *FileDB) GetFullURL(id string) string {
 	longURL := ""
 	reader, _ := NewReader(pathStorage)
 	defer reader.Close()
@@ -122,7 +122,7 @@ func (s *service.Storage) GetFullURL(id string) string {
 	return longURL
 }
 
-func (s *service.Storage) GetFullList() map[string]*service.Shorter {
+func (s *FileDB) GetFullList() map[string]*service.Shorter {
 	reader, _ := NewReader(pathStorage)
 	defer reader.Close()
 

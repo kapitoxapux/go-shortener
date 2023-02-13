@@ -11,16 +11,16 @@ type DB struct {
 	repo repository.Repository
 }
 
-func NewDB() *service.Storage {
+func NewDB() *DB {
 
 	repo := repository.NewRepository(config.GetStorageDB())
 
-	return &service.Storage{
+	return &DB{
 		repo: repo,
 	}
 }
 
-func (s service.Storage) SetShort(link string) (*service.Shorter, bool) {
+func (s *DB) SetShort(link string) (*service.Shorter, bool) {
 	shorter := service.NewShorter()
 	duplicate := false
 
