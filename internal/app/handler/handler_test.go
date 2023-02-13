@@ -3,8 +3,6 @@ package handler
 import (
 	"bytes"
 	"io"
-	"myapp/internal/app/config"
-	"myapp/internal/app/storage"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,11 +10,22 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"myapp/internal/app/config"
+	"myapp/internal/app/repository"
+	"myapp/internal/app/storage"
 )
 
 var forTest *storage.Shorter
+var repo repository.Repository
 
 func testCustomAction(res http.ResponseWriter, req *http.Request) {
+	if status, _ := storage.ConnectionDBCheck(); status == 200 {
+		repo = repository.NewRepository(config.GetStorageDB())
+	} else {
+		repo = nil
+	}
+
 	switch req.URL.Path {
 	case "/":
 		if req.Method != http.MethodPost {
@@ -76,7 +85,7 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 		part := req.URL.Path
 		formated := strings.Replace(part, "/", "", -1)
 
-		sh := storage.GetShort(formated)
+		sh := storage.GetShort(repo, formated)
 		if sh == "" {
 			http.Error(res, "Url not founded!", http.StatusBadRequest)
 
@@ -84,14 +93,21 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 		}
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		res.Header().Set("Location", storage.GetFullURL(formated))
+		res.Header().Set("Location", storage.GetFullURL(repo, formated))
 		res.WriteHeader(http.StatusTemporaryRedirect)
 	}
 }
 
 func TestEndpoints_Handle(t *testing.T) {
 	config.SetConfig()
-	forTest, _ = storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
+
+	if status, _ := storage.ConnectionDBCheck(); status == 200 {
+		repo = repository.NewRepository(config.GetStorageDB())
+	} else {
+		repo = nil
+	}
+
+	forTest, _ = storage.SetShort(repo, "https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
 
 	type want struct {
 		contentType string

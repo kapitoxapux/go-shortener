@@ -13,6 +13,7 @@ import (
 	"myapp/internal/app/config"
 	"myapp/internal/app/handler"
 	"myapp/internal/app/repository"
+	"myapp/internal/app/service"
 	"myapp/internal/app/storage"
 )
 
@@ -20,26 +21,42 @@ var repo repository.Repository
 
 type App struct {
 	httpServer *http.Server
-	repo       repository.Repository
+	service    *service.Service
 }
 
 func NewApp() *App {
 
-	config.SetConfig()
+	db := GetDB()
+	service := service.NewService(*db)
 
-	if status, _ := storage.ConnectionDBCheck(); status == 200 {
-		repo = repository.NewRepository(config.GetStorageDB())
-	} else {
-		repo = nil
-	}
+	// if status, _ := storage.ConnectionDBCheck(); status == 200 {
+	// 	repo = repository.NewRepository(config.GetStorageDB())
+	// } else {
+	// 	repo = nil
+	// }
 
 	return &App{
-		repo: repo,
+		service: service,
 	}
 }
 
-func registerHTTPEndpoints(router *chi.Mux, repo repository.Repository) {
-	h := handler.NewHandler(repo)
+func GetDB() *service.Storage {
+
+	config.SetConfig()
+
+	if status, _ := service.ConnectionDBCheck(); status == 200 {
+		return storage.NewDB()
+	}
+
+	if pathStorage := config.GetConfigPath(); pathStorage != "" {
+		return storage.NewFileDB()
+	}
+
+	return storage.NewInMemDB()
+}
+
+func registerHTTPEndpoints(router *chi.Mux, service service.Service) {
+	h := handler.NewHandler(service)
 
 	router.Post("/", h.SetShortAction)
 	router.Get("/{`\\w+$`}", h.GetShortAction)
@@ -56,7 +73,7 @@ func (a *App) Run() error {
 
 	address := config.GetConfigAddress()
 
-	registerHTTPEndpoints(route, a.repo)
+	registerHTTPEndpoints(route, *a.service)
 
 	a.httpServer = &http.Server{
 		Addr:    address,

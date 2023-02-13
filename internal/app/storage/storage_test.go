@@ -3,10 +3,21 @@ package storage
 import (
 	"os"
 	"testing"
+
+	"myapp/internal/app/config"
+	"myapp/internal/app/repository"
 )
 
+var repo repository.Repository
+
 func Test_getFullUrl(t *testing.T) {
-	s2, _ := SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
+	if status, _ := ConnectionDBCheck(); status == 200 {
+		repo = repository.NewRepository(config.GetStorageDB())
+	} else {
+		repo = nil
+	}
+
+	s2, _ := SetShort(repo, os.Getenv("BASE_URL")+"/some_text_to_test_2")
 	tests := []struct {
 		name    string
 		link    string
@@ -22,7 +33,7 @@ func Test_getFullUrl(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetFullURL(tt.link); (got != tt.shorter.ShortURL) == tt.equel {
+			if got := GetFullURL(repo, tt.link); (got != tt.shorter.ShortURL) == tt.equel {
 				t.Errorf("getFullUrl() = %v, want %v", got, tt.equel)
 			}
 		})
@@ -30,7 +41,13 @@ func Test_getFullUrl(t *testing.T) {
 }
 
 func Test_getShort(t *testing.T) {
-	s1, _ := SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
+	if status, _ := ConnectionDBCheck(); status == 200 {
+		repo = repository.NewRepository(config.GetStorageDB())
+	} else {
+		repo = nil
+	}
+
+	s1, _ := SetShort(repo, os.Getenv("BASE_URL")+"/some_text_to_test_1")
 	tests := []struct {
 		name    string
 		link    string
@@ -46,7 +63,7 @@ func Test_getShort(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetShort(tt.link); (got != tt.shorter.ShortURL) == tt.equel {
+			if got := GetShort(repo, tt.link); (got != tt.shorter.ShortURL) == tt.equel {
 				t.Errorf("getShort() = %v, want %v", got, tt.equel)
 			}
 		})
@@ -55,8 +72,14 @@ func Test_getShort(t *testing.T) {
 
 func Test_setShort(t *testing.T) {
 
-	testNegative, _ := SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
-	testPositive, _ := SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
+	if status, _ := ConnectionDBCheck(); status == 200 {
+		repo = repository.NewRepository(config.GetStorageDB())
+	} else {
+		repo = nil
+	}
+
+	testNegative, _ := SetShort(repo, os.Getenv("BASE_URL")+"/some_text_to_test_1")
+	testPositive, _ := SetShort(repo, os.Getenv("BASE_URL")+"/some_text_to_test_2")
 
 	tests := []struct {
 		name    string

@@ -17,17 +17,16 @@ import (
 	// "github.com/go-chi/chi/middleware"
 
 	"myapp/internal/app/config"
-	"myapp/internal/app/repository"
-	"myapp/internal/app/storage"
+	"myapp/internal/app/service"
 )
 
 type Handler struct {
-	repo repository.Repository
+	service service.Service
 }
 
-func NewHandler(repo repository.Repository) *Handler {
+func NewHandler(service service.Service) *Handler {
 	return &Handler{
-		repo: repo,
+		service: service,
 	}
 }
 
@@ -117,23 +116,35 @@ func SetCookieToken(sign []byte) string {
 func GzipMiddleware(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			next.ServeHTTP(w, r)
-			return
+		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			gzw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+
+				return
+			}
+
+			w.Header().Set("Content-Encoding", "gzip")
+			w = gzipWriter{
+				ResponseWriter: w,
+				Writer:         gzw,
+			}
+			defer gzw.Close()
 		}
 
-		gzw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if r.Header.Get(`Content-Encoding`) == `gzip` {
+			gzr, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 
-			return
+				return
+			}
+
+			r.Body = gzr
+			defer gzr.Close()
 		}
 
-		defer gzw.Close()
-
-		w.Header().Set("Content-Encoding", "gzip")
-
-		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gzw}, r)
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -150,33 +161,17 @@ func (h *Handler) SetShortAction(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var reader io.Reader
-
-	if req.Header.Get(`Content-Encoding`) == `gzip` {
-		gzr, err := gzip.NewReader(req.Body)
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusBadRequest)
-
-			return
-		}
-
-		reader = gzr
-		defer gzr.Close()
-	} else {
-		reader = req.Body
-	}
-
 	defer req.Body.Close()
 
 	if req.ContentLength > 0 {
-		b, err := io.ReadAll(reader)
+		b, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 
 			return
 		}
 
-		short, duplicate := storage.SetShort(h.repo, string(b))
+		short, duplicate := h.service.Storage.SetShort(string(b))
 
 		cookie, _ := req.Cookie("user_id")
 		if cookie == nil {
@@ -210,7 +205,7 @@ func (h *Handler) GetShortAction(res http.ResponseWriter, req *http.Request) {
 	part := req.URL.Path
 	formated := strings.Replace(part, "/", "", -1)
 
-	sh := storage.GetShort(h.repo, formated)
+	sh := h.service.Storage.GetShort(formated)
 	if sh == "" {
 		http.Error(res, "Url not founded!", http.StatusBadRequest)
 
@@ -218,7 +213,7 @@ func (h *Handler) GetShortAction(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	res.Header().Set("Location", storage.GetFullURL(h.repo, formated))
+	res.Header().Set("Location", h.service.Storage.GetFullURL(formated))
 	res.WriteHeader(http.StatusTemporaryRedirect)
 
 }
@@ -238,21 +233,8 @@ func (h *Handler) GetJSONShortAction(res http.ResponseWriter, req *http.Request)
 
 	defer req.Body.Close()
 
-	var reader io.Reader
-	if req.Header.Get(`Content-Encoding`) == `gzip` {
-		gzr, err := gzip.NewReader(req.Body)
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		reader = gzr
-		defer gzr.Close()
-	} else {
-		reader = req.Body
-	}
-
 	if req.ContentLength > 0 {
-		b, err := io.ReadAll(reader)
+		b, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 
@@ -267,7 +249,7 @@ func (h *Handler) GetJSONShortAction(res http.ResponseWriter, req *http.Request)
 			http.Error(res, err.Error(), http.StatusBadRequest)
 		}
 
-		short, duplicate := storage.SetShort(h.repo, j.URL)
+		short, duplicate := h.service.Storage.SetShort(j.URL)
 
 		cookie, _ := req.Cookie("user_id")
 		if cookie == nil {
@@ -314,7 +296,7 @@ func (h *Handler) GetUserURLAction(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 		// пройтись по всем записям и забрать нужные объекты используя куки юзера
-		for _, short := range storage.GetFullList(h.repo) {
+		for _, short := range h.service.Storage.GetFullList() {
 			if GetSignerCheck(short.Signer.Sign, cookie.Value) {
 				obj := JSONObject{}
 				obj.ShortURL = short.ShortURL
@@ -336,7 +318,7 @@ func (h *Handler) GetUserURLAction(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handler) GetPingAction(res http.ResponseWriter, req *http.Request) {
-	if status, err := storage.ConnectionDBCheck(); status != http.StatusOK {
+	if status, err := h.service.Storage.ConnectionDBCheck(); status != http.StatusOK {
 		http.Error(res, err, http.StatusInternalServerError)
 
 		return
@@ -364,21 +346,8 @@ func (h *Handler) GetBatchAction(res http.ResponseWriter, req *http.Request) {
 
 	defer req.Body.Close()
 
-	var reader io.Reader
-	if req.Header.Get(`Content-Encoding`) == `gzip` {
-		gzr, err := gzip.NewReader(req.Body)
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		reader = gzr
-		defer gzr.Close()
-	} else {
-		reader = req.Body
-	}
-
 	if req.ContentLength > 0 {
-		b, err := io.ReadAll(reader)
+		b, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 
@@ -398,7 +367,7 @@ func (h *Handler) GetBatchAction(res http.ResponseWriter, req *http.Request) {
 		resultsObj := []JSONResultBatcher{}
 
 		for i, obj := range list {
-			short, _ := storage.SetShort(h.repo, obj.LongURL)
+			short, _ := h.service.Storage.SetShort(obj.LongURL)
 
 			if i == 1 {
 				cookie, _ := req.Cookie("user_id")
