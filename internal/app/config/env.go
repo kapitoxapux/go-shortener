@@ -18,7 +18,7 @@ var Secretkey = []byte("самый секретный секрет")
 
 const defaultServerAdress = "localhost:8080"
 const defaultBaseURL = "http://localhost:8080"
-const defaultStoragePath = "json.txt"
+const defaultStoragePath = ""
 const defaultStorageDB = "host=localhost port=5432 user=postgres password= dbname=postgres sslmode=disable"
 
 func SetConfig() Config {
