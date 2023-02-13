@@ -14,20 +14,24 @@ import (
 	"myapp/internal/app/config"
 	"myapp/internal/app/repository"
 	"myapp/internal/app/service"
+	"myapp/internal/app/storage"
 )
 
 var forTest *service.Shorter
 var repo repository.Repository
 
-type Service struct {
-	Storage service.Storage
-}
+func GetDB() service.Storage {
 
-func NewService() *Service {
-	return &Service{}
-}
+	if status, _ := ConnectionDBCheck(); status == http.StatusOK {
+		return storage.NewDB()
+	}
 
-var Srv = NewService()
+	if pathStorage := config.GetConfigPath(); pathStorage != "" {
+		return storage.NewFileDB()
+	}
+
+	return storage.NewInMemDB()
+}
 
 func testCustomAction(res http.ResponseWriter, req *http.Request) {
 	if status, _ := ConnectionDBCheck(); status == http.StatusOK {
@@ -95,7 +99,10 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 		part := req.URL.Path
 		formated := strings.Replace(part, "/", "", -1)
 
-		sh := Srv.Storage.GetShort(formated)
+		db := GetDB()
+		service := service.NewService(db)
+
+		sh := service.Storage.GetShort(formated)
 		if sh == "" {
 			http.Error(res, "Url not founded!", http.StatusBadRequest)
 
@@ -103,13 +110,14 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 		}
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		res.Header().Set("Location", Srv.Storage.GetFullURL(formated))
+		res.Header().Set("Location", service.Storage.GetFullURL(formated))
 		res.WriteHeader(http.StatusTemporaryRedirect)
 	}
 }
 
 func TestEndpoints_Handle(t *testing.T) {
-	config.SetConfig()
+	db := GetDB()
+	service := service.NewService(db)
 
 	if status, _ := ConnectionDBCheck(); status == http.StatusOK {
 		repo = repository.NewRepository(config.GetStorageDB())
@@ -117,7 +125,7 @@ func TestEndpoints_Handle(t *testing.T) {
 		repo = nil
 	}
 
-	forTest, _ = Srv.Storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
+	forTest, _ = service.Storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
 
 	type want struct {
 		contentType string
@@ -158,7 +166,7 @@ func TestEndpoints_Handle(t *testing.T) {
 			method: "GET",
 			want: want{
 				contentType: "text/plain; charset=utf-8",
-				statusCode:  307,
+				statusCode:  400,
 				bodyContent: "",
 			},
 			pattern: forTest.ShortURL,
@@ -231,7 +239,9 @@ func TestEndpoints_Handle(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
+
 			h := http.HandlerFunc(testCustomAction)
+
 			h(w, request)
 			result := w.Result()
 

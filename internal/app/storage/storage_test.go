@@ -11,17 +11,20 @@ import (
 	"myapp/internal/app/service"
 )
 
-type Service struct {
-	Storage service.Storage
-}
-
-func NewService() *Service {
-	return &Service{}
-}
-
-var Srv = NewService()
-
 var repo repository.Repository
+
+func GetDB() service.Storage {
+
+	if status, _ := handler.ConnectionDBCheck(); status == http.StatusOK {
+		return NewDB()
+	}
+
+	if pathStorage := config.GetConfigPath(); pathStorage != "" {
+		return NewFileDB()
+	}
+
+	return NewInMemDB()
+}
 
 func Test_getFullUrl(t *testing.T) {
 	if status, _ := handler.ConnectionDBCheck(); status == http.StatusOK {
@@ -30,7 +33,10 @@ func Test_getFullUrl(t *testing.T) {
 		repo = nil
 	}
 
-	s2, _ := Srv.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
+	db := GetDB()
+	s := service.NewService(db)
+
+	s2, _ := s.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
 	tests := []struct {
 		name    string
 		link    string
@@ -46,7 +52,7 @@ func Test_getFullUrl(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Srv.Storage.GetFullURL(tt.link); (got != tt.shorter.ShortURL) == tt.equel {
+			if got := s.Storage.GetFullURL(tt.link); (got != tt.shorter.ShortURL) == tt.equel {
 				t.Errorf("getFullUrl() = %v, want %v", got, tt.equel)
 			}
 		})
@@ -60,7 +66,10 @@ func Test_getShort(t *testing.T) {
 		repo = nil
 	}
 
-	s1, _ := Srv.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
+	db := GetDB()
+	s := service.NewService(db)
+
+	s1, _ := s.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
 	tests := []struct {
 		name    string
 		link    string
@@ -76,7 +85,7 @@ func Test_getShort(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Srv.Storage.GetShort(tt.link); (got != tt.shorter.ShortURL) == tt.equel {
+			if got := s.Storage.GetShort(tt.link); (got != tt.shorter.ShortURL) == tt.equel {
 				t.Errorf("getShort() = %v, want %v", got, tt.equel)
 			}
 		})
@@ -91,8 +100,11 @@ func Test_setShort(t *testing.T) {
 		repo = nil
 	}
 
-	testNegative, _ := Srv.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
-	testPositive, _ := Srv.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
+	db := GetDB()
+	s := service.NewService(db)
+
+	testNegative, _ := s.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
+	testPositive, _ := s.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
 
 	tests := []struct {
 		name    string
