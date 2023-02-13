@@ -17,7 +17,7 @@ var ServerConfig Config
 var Secretkey = []byte("самый секретный секрет")
 
 const defaultServerAdress = "localhost:8080"
-const defaultBaseURL = ""
+const defaultBaseURL = "http://localhost:8080"
 const defaultStoragePath = ""
 const defaultStorageDB = ""
 
