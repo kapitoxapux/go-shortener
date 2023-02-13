@@ -22,7 +22,7 @@ func NewFileDB() *FileDB {
 	}
 }
 
-var pathStorage = config.GetConfigPath()
+// var pathStorage = config.GetConfigPath()
 
 type saver struct {
 	file   *os.File
@@ -89,7 +89,7 @@ func (s *FileDB) SetShort(link string) (*service.Shorter, bool) {
 	shorter := service.NewShorter()
 	duplicate := false
 
-	reader, _ := NewReader(pathStorage)
+	reader, _ := NewReader(s.pathStorage)
 	defer reader.Close()
 
 	for reader.scanner.Scan() {
@@ -101,7 +101,7 @@ func (s *FileDB) SetShort(link string) (*service.Shorter, bool) {
 
 	}
 
-	saver, _ := NewSaver(pathStorage)
+	saver, _ := NewSaver(s.pathStorage)
 	defer saver.Close()
 
 	short := ""
@@ -121,7 +121,7 @@ func (s *FileDB) SetShort(link string) (*service.Shorter, bool) {
 
 func (s *FileDB) GetShort(id string) string {
 	shortURL := ""
-	reader, _ := NewReader(pathStorage)
+	reader, _ := NewReader(s.pathStorage)
 	defer reader.Close()
 
 	shorter := service.NewShorter()
@@ -140,7 +140,7 @@ func (s *FileDB) GetShort(id string) string {
 
 func (s *FileDB) GetFullURL(id string) string {
 	longURL := ""
-	reader, _ := NewReader(pathStorage)
+	reader, _ := NewReader(s.pathStorage)
 	defer reader.Close()
 
 	shorter := service.NewShorter()
@@ -158,7 +158,7 @@ func (s *FileDB) GetFullURL(id string) string {
 }
 
 func (s *FileDB) GetFullList() map[string]*service.Shorter {
-	reader, _ := NewReader(pathStorage)
+	reader, _ := NewReader(s.pathStorage)
 	defer reader.Close()
 
 	paths := map[string]*service.Shorter{}
@@ -173,8 +173,3 @@ func (s *FileDB) GetFullList() map[string]*service.Shorter {
 
 	return paths
 }
-
-// func (s *FileDB) ConnectionDBCheck() (int, string) {
-
-// 	return 404, ""
-// }
