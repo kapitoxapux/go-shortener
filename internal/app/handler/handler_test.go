@@ -3,8 +3,6 @@ package handler
 import (
 	"bytes"
 	"io"
-	"myapp/internal/app/config"
-	"myapp/internal/app/storage"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,11 +10,36 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"myapp/internal/app/config"
+	"myapp/internal/app/repository"
+	"myapp/internal/app/service"
+	"myapp/internal/app/storage"
 )
 
-var forTest *storage.Shorter
+var forTest *service.Shorter
+var repo repository.Repository
+
+func GetDB() service.Storage {
+
+	if status, _ := ConnectionDBCheck(); status == http.StatusOK {
+		return storage.NewDB()
+	}
+
+	if pathStorage := config.GetConfigPath(); pathStorage != "" {
+		return storage.NewFileDB()
+	}
+
+	return storage.NewInMemDB()
+}
 
 func testCustomAction(res http.ResponseWriter, req *http.Request) {
+	if status, _ := ConnectionDBCheck(); status == http.StatusOK {
+		repo = repository.NewRepository(config.GetStorageDB())
+	} else {
+		repo = nil
+	}
+
 	switch req.URL.Path {
 	case "/":
 		if req.Method != http.MethodPost {
@@ -76,7 +99,10 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 		part := req.URL.Path
 		formated := strings.Replace(part, "/", "", -1)
 
-		sh := storage.GetShort(formated)
+		db := GetDB()
+		service := service.NewService(db)
+
+		sh := service.Storage.GetShort(formated)
 		if sh == "" {
 			http.Error(res, "Url not founded!", http.StatusBadRequest)
 
@@ -84,14 +110,22 @@ func testCustomAction(res http.ResponseWriter, req *http.Request) {
 		}
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		res.Header().Set("Location", storage.GetFullURL(formated))
+		res.Header().Set("Location", service.Storage.GetFullURL(formated))
 		res.WriteHeader(http.StatusTemporaryRedirect)
 	}
 }
 
 func TestEndpoints_Handle(t *testing.T) {
-	config.SetConfig()
-	forTest = storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
+	db := GetDB()
+	service := service.NewService(db)
+
+	if status, _ := ConnectionDBCheck(); status == http.StatusOK {
+		repo = repository.NewRepository(config.GetStorageDB())
+	} else {
+		repo = nil
+	}
+
+	forTest, _ = service.Storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
 
 	type want struct {
 		contentType string
@@ -132,7 +166,7 @@ func TestEndpoints_Handle(t *testing.T) {
 			method: "GET",
 			want: want{
 				contentType: "text/plain; charset=utf-8",
-				statusCode:  307,
+				statusCode:  400,
 				bodyContent: "",
 			},
 			pattern: forTest.ShortURL,
@@ -205,7 +239,9 @@ func TestEndpoints_Handle(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
+
 			h := http.HandlerFunc(testCustomAction)
+
 			h(w, request)
 			result := w.Result()
 

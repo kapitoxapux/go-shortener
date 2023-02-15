@@ -9,36 +9,46 @@ type Config struct {
 	Address string `env:"SERVER_ADDRESS"`
 	Base    string `env:"BASE_URL"`
 	Path    string `env:"FILE_STORAGE_PATH"`
+	DB      string `env:"DATABASE_DSN"`
 }
 
 var ServerConfig Config
+var Secretkey = []byte("самый секретный секрет")
 
 const defaultServerAdress = "localhost:8080"
 const defaultBaseURL = "http://localhost:8080"
 const defaultStoragePath = ""
+const defaultStorageDB = "host=localhost port=5432 user=postgres password= dbname=postgres sslmode=disable"
 
 func SetConfig() Config {
 	addr := flag.String("a", defaultServerAdress, "SERVER_ADDRESS")
 	base := flag.String("b", defaultBaseURL, "BASE_URL")
 	path := flag.String("f", defaultStoragePath, "FILE_STORAGE_PATH")
+	db := flag.String("d", defaultStorageDB, "DATABASE_DSN")
 	flag.Parse()
 
-	if os.Getenv("SERVER_ADDRESS") == "" {
+	if address := os.Getenv("SERVER_ADDRESS"); address == "" {
 		ServerConfig.Address = *addr
 	} else {
-		ServerConfig.Address = os.Getenv("SERVER_ADDRESS")
+		ServerConfig.Address = address
 	}
 
-	if os.Getenv("BASE_URL") == "" {
+	if baseURL := os.Getenv("BASE_URL"); baseURL == "" {
 		ServerConfig.Base = *base
 	} else {
-		ServerConfig.Base = os.Getenv("BASE_URL")
+		ServerConfig.Base = baseURL
 	}
 
-	if os.Getenv("FILE_STORAGE_PATH") == "" {
+	if storagePath := os.Getenv("FILE_STORAGE_PATH"); storagePath == "" {
 		ServerConfig.Path = *path
 	} else {
-		ServerConfig.Path = os.Getenv("FILE_STORAGE_PATH")
+		ServerConfig.Path = storagePath
+	}
+
+	if storageDB := os.Getenv("DATABASE_DSN"); storageDB == "" {
+		ServerConfig.DB = *db
+	} else {
+		ServerConfig.DB = storageDB
 	}
 
 	return ServerConfig
@@ -57,4 +67,9 @@ func GetConfigBase() string {
 func GetConfigPath() string {
 
 	return ServerConfig.Path
+}
+
+func GetStorageDB() string {
+
+	return ServerConfig.DB
 }

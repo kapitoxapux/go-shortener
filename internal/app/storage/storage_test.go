@@ -1,27 +1,58 @@
 package storage
 
 import (
+	"net/http"
 	"os"
 	"testing"
+
+	"myapp/internal/app/config"
+	"myapp/internal/app/handler"
+	"myapp/internal/app/repository"
+	"myapp/internal/app/service"
 )
 
+var repo repository.Repository
+
+func GetDB() service.Storage {
+
+	if status, _ := handler.ConnectionDBCheck(); status == http.StatusOK {
+		return NewDB()
+	}
+
+	if pathStorage := config.GetConfigPath(); pathStorage != "" {
+		return NewFileDB()
+	}
+
+	return NewInMemDB()
+}
+
 func Test_getFullUrl(t *testing.T) {
+	if status, _ := handler.ConnectionDBCheck(); status == http.StatusOK {
+		repo = repository.NewRepository(config.GetStorageDB())
+	} else {
+		repo = nil
+	}
+
+	db := GetDB()
+	s := service.NewService(db)
+
+	s2, _ := s.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
 	tests := []struct {
 		name    string
 		link    string
-		shorter *Shorter
+		shorter *service.Shorter
 		equel   bool
 	}{
 		{
 			name:    "unique check",
 			link:    os.Getenv("BASE_URL") + "/some_text_to_test_2",
-			shorter: SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2"),
+			shorter: s2,
 			equel:   false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetFullURL(tt.link); (got != tt.shorter.ShortURL) == tt.equel {
+			if got := s.Storage.GetFullURL(tt.link); (got != tt.shorter.ShortURL) == tt.equel {
 				t.Errorf("getFullUrl() = %v, want %v", got, tt.equel)
 			}
 		})
@@ -29,22 +60,32 @@ func Test_getFullUrl(t *testing.T) {
 }
 
 func Test_getShort(t *testing.T) {
+	if status, _ := handler.ConnectionDBCheck(); status == http.StatusOK {
+		repo = repository.NewRepository(config.GetStorageDB())
+	} else {
+		repo = nil
+	}
+
+	db := GetDB()
+	s := service.NewService(db)
+
+	s1, _ := s.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
 	tests := []struct {
 		name    string
 		link    string
-		shorter *Shorter
+		shorter *service.Shorter
 		equel   bool
 	}{
 		{
 			name:    "unique check",
 			link:    os.Getenv("BASE_URL") + "/some_text_to_test_1",
-			shorter: SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1"),
+			shorter: s1,
 			equel:   false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetShort(tt.link); (got != tt.shorter.ShortURL) == tt.equel {
+			if got := s.Storage.GetShort(tt.link); (got != tt.shorter.ShortURL) == tt.equel {
 				t.Errorf("getShort() = %v, want %v", got, tt.equel)
 			}
 		})
@@ -53,13 +94,22 @@ func Test_getShort(t *testing.T) {
 
 func Test_setShort(t *testing.T) {
 
-	testNegative := SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
-	testPositive := SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
+	if status, _ := handler.ConnectionDBCheck(); status == http.StatusOK {
+		repo = repository.NewRepository(config.GetStorageDB())
+	} else {
+		repo = nil
+	}
+
+	db := GetDB()
+	s := service.NewService(db)
+
+	testNegative, _ := s.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
+	testPositive, _ := s.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
 
 	tests := []struct {
 		name    string
 		link    string
-		want    *Shorter
+		want    *service.Shorter
 		wantErr bool
 	}{
 		{

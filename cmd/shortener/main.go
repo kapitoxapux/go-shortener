@@ -2,22 +2,14 @@ package main
 
 import (
 	"log"
-	"net/http"
-
-	"myapp/internal/app/config"
-	"myapp/internal/app/handler"
+	"myapp/internal/app/server"
 )
 
 func main() {
 
-	config.SetConfig()
-
-	address := config.GetConfigAddress()
-
-	server := &http.Server{
-		Addr:    address,
-		Handler: handler.GzipMiddleware(handler.NewRoutes()),
+	app := server.NewApp()
+	if err := app.Run(); err != nil {
+		log.Fatalf("%s", err.Error())
 	}
 
-	log.Fatal(server.ListenAndServe())
 }
