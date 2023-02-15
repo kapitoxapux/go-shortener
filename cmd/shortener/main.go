@@ -2,12 +2,6 @@ package main
 
 import (
 	"log"
-	// "net/http"
-
-	// "myapp/internal/app/config"
-	// "myapp/internal/app/handler"
-	// "myapp/internal/app/repository"
-	// "myapp/internal/app/storage"
 	"myapp/internal/app/server"
 )
 

@@ -25,9 +25,7 @@ func Shortener(url string) string {
 	for i := range s {
 		s[i] = url[rand.Intn(len(url))]
 	}
-
 	b := new(big.Int).SetBytes(s[2:]).Text(62)
-
 	if db[b] != nil {
 		return ""
 	}
@@ -38,7 +36,6 @@ func Shortener(url string) string {
 func (s *InMemDB) SetShort(link string) (*service.Shorter, bool) {
 	shorter := service.NewShorter()
 	duplicate := false
-
 	short := ""
 	for short == "" {
 		short = Shortener(link)
@@ -48,7 +45,6 @@ func (s *InMemDB) SetShort(link string) (*service.Shorter, bool) {
 	shorter.LongURL = link
 	shorter.Signer.Sign = service.ShorterSignerSet(short).Sign
 	shorter.Signer.SignID = service.ShorterSignerSet(short).SignID
-
 	s.db[short] = &shorter
 
 	return &shorter, duplicate
@@ -75,10 +71,6 @@ func (s *InMemDB) GetFullURL(id string) string {
 }
 
 func (s *InMemDB) GetFullList() map[string]*service.Shorter {
+
 	return s.db
 }
-
-// func (s *InMemDB) ConnectionDBCheck() (int, string) {
-
-// 	return 404, ""
-// }

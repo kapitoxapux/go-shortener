@@ -13,7 +13,6 @@ type Config struct {
 }
 
 var ServerConfig Config
-
 var Secretkey = []byte("самый секретный секрет")
 
 const defaultServerAdress = "localhost:8080"

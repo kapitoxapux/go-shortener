@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -15,7 +16,6 @@ type DB struct {
 }
 
 func NewDB() *DB {
-
 	repo := repository.NewRepository(config.GetStorageDB())
 
 	return &DB{
@@ -26,7 +26,6 @@ func NewDB() *DB {
 func (db *DB) SetShort(link string) (*service.Shorter, bool) {
 	shorter := service.NewShorter()
 	duplicate := false
-
 	model, state := db.repo.ShowShortenerByLong(link)
 	if state == "Model found" {
 		duplicate = true
@@ -44,12 +43,10 @@ func (db *DB) SetShort(link string) (*service.Shorter, bool) {
 		s.Sign = service.ShorterSignerSet(short).Sign
 		s.SignID = service.ShorterSignerSet(short).SignID
 		s.CreatedAt = time.Now()
-
 		m, err := db.repo.CreateShortener(s)
 		if err != nil {
 			log.Fatal("Model saving repository failed %w", err.Error())
 		}
-
 		shorter.ID = m.ID
 		shorter.ShortURL = m.ShortURL
 		shorter.LongURL = m.LongURL
@@ -74,7 +71,7 @@ func (db *DB) GetShort(id string) string {
 func (db *DB) GetFullURL(id string) string {
 	longURL := ""
 	if result, err := db.repo.ShowShortener(id); err != nil {
-		log.Fatal("Полная ссылка не найдена, произошла ошибка: %w", err)
+		fmt.Println("Полная ссылка не найдена, произошла ошибка: %w", err)
 	} else {
 		longURL = result.LongURL
 	}
@@ -84,7 +81,6 @@ func (db *DB) GetFullURL(id string) string {
 
 func (db *DB) GetFullList() map[string]*service.Shorter {
 	paths := map[string]*service.Shorter{}
-
 	if results, err := db.repo.ShowShorteners(); err != nil {
 		log.Fatal("Произошла ошибка получения списка: %w", err)
 	} else {
@@ -95,30 +91,9 @@ func (db *DB) GetFullList() map[string]*service.Shorter {
 			shorter.LongURL = model.LongURL
 			shorter.Sign = model.Sign
 			shorter.SignID = model.SignID
-
 			paths[model.ID] = &shorter
 		}
 	}
 
 	return paths
 }
-
-// func (s *DB) ConnectionDBCheck() (int, string) {
-// 	db, err := sql.Open("pgx", config.GetStorageDB())
-// 	if err != nil {
-
-// 		return 500, err.Error()
-// 	}
-
-// 	// close database
-// 	defer db.Close()
-
-// 	// check db
-// 	err = db.Ping()
-// 	if err != nil {
-
-// 		return 500, err.Error()
-// 	}
-
-// 	return 200, ""
-// }

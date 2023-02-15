@@ -14,15 +14,12 @@ type FileDB struct {
 }
 
 func NewFileDB() *FileDB {
-
 	pathStorage := config.GetConfigPath()
 
 	return &FileDB{
 		pathStorage: pathStorage,
 	}
 }
-
-// var pathStorage = config.GetConfigPath()
 
 type saver struct {
 	file   *os.File
@@ -37,6 +34,7 @@ type loader struct {
 func NewSaver(filename string) (*saver, error) {
 	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_APPEND, 0777)
 	if err != nil {
+
 		return nil, err
 	}
 
@@ -49,14 +47,15 @@ func NewSaver(filename string) (*saver, error) {
 func (p *saver) WriteShort(shorter *service.Shorter) error {
 	json, err := json.Marshal(&shorter)
 	if err != nil {
+
 		return err
 	}
-
 	if _, err := p.writer.Write(json); err != nil {
+
 		return err
 	}
-
 	if err := p.writer.WriteByte('\n'); err != nil {
+
 		return err
 	}
 
@@ -88,10 +87,8 @@ func (c *loader) Close() error {
 func (s *FileDB) SetShort(link string) (*service.Shorter, bool) {
 	shorter := service.NewShorter()
 	duplicate := false
-
 	reader, _ := NewReader(s.pathStorage)
 	defer reader.Close()
-
 	for reader.scanner.Scan() {
 		data := reader.scanner.Bytes()
 		_ = json.Unmarshal(data, &shorter)
@@ -100,10 +97,8 @@ func (s *FileDB) SetShort(link string) (*service.Shorter, bool) {
 		}
 
 	}
-
 	saver, _ := NewSaver(s.pathStorage)
 	defer saver.Close()
-
 	short := ""
 	for short == "" {
 		short = Shortener(link)
@@ -113,7 +108,6 @@ func (s *FileDB) SetShort(link string) (*service.Shorter, bool) {
 	shorter.LongURL = link
 	shorter.Signer.Sign = service.ShorterSignerSet(short).Sign
 	shorter.Signer.SignID = service.ShorterSignerSet(short).SignID
-
 	_ = saver.WriteShort(&shorter)
 
 	return &shorter, duplicate
@@ -123,11 +117,9 @@ func (s *FileDB) GetShort(id string) string {
 	shortURL := ""
 	reader, _ := NewReader(s.pathStorage)
 	defer reader.Close()
-
 	shorter := service.NewShorter()
 	for reader.scanner.Scan() {
 		data := reader.scanner.Bytes()
-
 		_ = json.Unmarshal(data, &shorter)
 		if id == shorter.ID {
 			return shorter.ShortURL
@@ -142,11 +134,9 @@ func (s *FileDB) GetFullURL(id string) string {
 	longURL := ""
 	reader, _ := NewReader(s.pathStorage)
 	defer reader.Close()
-
 	shorter := service.NewShorter()
 	for reader.scanner.Scan() {
 		data := reader.scanner.Bytes()
-
 		_ = json.Unmarshal(data, &shorter)
 		if id == shorter.ID {
 			return shorter.LongURL
@@ -160,12 +150,9 @@ func (s *FileDB) GetFullURL(id string) string {
 func (s *FileDB) GetFullList() map[string]*service.Shorter {
 	reader, _ := NewReader(s.pathStorage)
 	defer reader.Close()
-
 	paths := map[string]*service.Shorter{}
-
 	for reader.scanner.Scan() {
 		data := reader.scanner.Bytes()
-
 		shorter := service.NewShorter()
 		_ = json.Unmarshal(data, &shorter)
 		paths[shorter.ID] = &shorter

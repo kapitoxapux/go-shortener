@@ -27,7 +27,6 @@ type Storage interface {
 	GetShort(id string) string
 	GetFullURL(id string) string
 	GetFullList() map[string]*Shorter
-	// ConnectionDBCheck() (int, string)
 }
 
 type Service struct {
@@ -35,6 +34,7 @@ type Service struct {
 }
 
 func NewService(storage Storage) *Service {
+
 	return &Service{
 		Storage: storage,
 	}
