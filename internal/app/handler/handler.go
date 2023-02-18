@@ -405,6 +405,7 @@ func (h *Handler) RemoveBatchAction(res http.ResponseWriter, req *http.Request) 
 
 	}
 	res.WriteHeader(http.StatusAccepted)
+	res.Write([]byte("All remoned!"))
 }
 
 func RemoveWorkers(
