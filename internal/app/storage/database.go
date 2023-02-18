@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -58,7 +57,8 @@ func (db *DB) SetShort(link string) (*service.Shorter, bool) {
 }
 
 func (db *DB) GetShort(id string) string {
-	if result, err := db.repo.ShowShortener(id); err != nil {
+	if result, err := db.repo.ShowShortener(id, "short"); err != nil || result == nil {
+		log.Println("Короткая ссылка не найдена, произошла ошибка: %w", err)
 		return "402"
 	} else {
 		return result.ShortURL
@@ -67,8 +67,8 @@ func (db *DB) GetShort(id string) string {
 
 func (db *DB) GetFullURL(id string) string {
 	longURL := ""
-	if result, err := db.repo.ShowShortener(id); err != nil {
-		fmt.Println("Полная ссылка не найдена, произошла ошибка: %w", err)
+	if result, err := db.repo.ShowShortener(id, ""); err != nil || result == nil {
+		log.Println("Полная ссылка не найдена, произошла ошибка: %w", err.Error())
 	} else {
 		longURL = result.LongURL
 	}

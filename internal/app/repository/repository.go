@@ -11,7 +11,7 @@ import (
 
 type Repository interface {
 	CreateShortener(m *models.Link) (*models.Link, error)
-	ShowShortener(id string) (*models.Link, error)
+	ShowShortener(id string, len string) (*models.Link, error)
 	ShowShorteners() ([]models.Link, error)
 	ShowShortenerByLong(link string) (*models.Link, string)
 	ShowShortenerByID(id string) (*models.Link, error)
@@ -30,13 +30,19 @@ func (r *repository) CreateShortener(m *models.Link) (*models.Link, error) {
 	return m, nil
 }
 
-func (r *repository) ShowShortener(id string) (*models.Link, error) {
+func (r *repository) ShowShortener(id string, len string) (*models.Link, error) {
 	model := &models.Link{}
-	if err := r.db.Where("is_deleted", uint8(0)).First(model, "id = ?", []byte(id)).Error; err != nil {
-		return nil, err
+	if len == "short" {
+		if err := r.db.Where("is_deleted", uint8(0)).First(model, "id = ?", []byte(id)).Error; err != nil {
+			return nil, err
+		}
+		return model, nil
+	} else {
+		if err := r.db.First(model, "id = ?", []byte(id)).Error; err != nil {
+			return nil, err
+		}
+		return model, nil
 	}
-
-	return model, nil
 }
 
 func (r *repository) ShowShorteners() ([]models.Link, error) {

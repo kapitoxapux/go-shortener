@@ -208,8 +208,9 @@ func (h *Handler) GetShortAction(res http.ResponseWriter, req *http.Request) {
 	}
 	if sh == "402" {
 		res.WriteHeader(http.StatusGone)
-
 		res.Write([]byte("Url not founded!"))
+
+		return
 	}
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	res.Header().Set("Location", h.service.Storage.GetFullURL(formated))
