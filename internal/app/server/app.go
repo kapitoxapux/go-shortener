@@ -52,6 +52,7 @@ func registerHTTPEndpoints(router *chi.Mux, service service.Service) {
 	router.Get("/api/user/urls", h.GetUserURLAction)
 	router.Get("/ping", h.GetPingAction)
 	router.Post("/api/shorten/batch", h.GetBatchAction)
+	router.Delete("/api/user/urls", h.RemoveBatchAction)
 }
 
 func (a *App) Run() error {

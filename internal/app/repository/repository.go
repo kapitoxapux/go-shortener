@@ -14,6 +14,8 @@ type Repository interface {
 	ShowShortener(id string) (*models.Link, error)
 	ShowShorteners() ([]models.Link, error)
 	ShowShortenerByLong(link string) (*models.Link, string)
+	ShowShortenerByID(id string) (*models.Link, error)
+	RemoveShorts(list []string) error
 }
 
 type repository struct {
@@ -30,7 +32,7 @@ func (r *repository) CreateShortener(m *models.Link) (*models.Link, error) {
 
 func (r *repository) ShowShortener(id string) (*models.Link, error) {
 	model := &models.Link{}
-	if err := r.db.First(model, "id = ?", []byte(id)).Error; err != nil {
+	if err := r.db.Where("is_deleted", uint8(0)).First(model, "id = ?", []byte(id)).Error; err != nil {
 		return nil, err
 	}
 
@@ -64,6 +66,22 @@ func (r *repository) ShowShortenerByLong(link string) (*models.Link, string) {
 	return model, "Model found"
 }
 
+func (r *repository) ShowShortenerByID(id string) (*models.Link, error) {
+	model := &models.Link{}
+	if err := r.db.Find(model).Where("id=?", id).Error; err != nil {
+		return nil, err
+	}
+
+	return model, nil
+}
+
+func (r *repository) RemoveShorts(list []string) error {
+	if err := r.db.Model(models.Link{}).Where("id IN ?", list).Updates(models.Link{IsDeleted: uint8(1)}).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 func NewRepository(dns string) Repository {
 	db, err := gorm.Open(postgres.Open(dns), &gorm.Config{})
 	if err != nil {
@@ -71,6 +89,9 @@ func NewRepository(dns string) Repository {
 	}
 	if exist := db.Migrator().HasTable(&models.Link{}); !exist {
 		db.Migrator().CreateTable(&models.Link{})
+	}
+	if d := db.Migrator().HasColumn(&models.Link{}, "IsDeleted"); !d {
+		db.Migrator().AddColumn(&models.Link{}, "IsDeleted")
 	}
 
 	return &repository{db}

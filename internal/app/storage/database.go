@@ -58,14 +58,11 @@ func (db *DB) SetShort(link string) (*service.Shorter, bool) {
 }
 
 func (db *DB) GetShort(id string) string {
-	shortURL := ""
 	if result, err := db.repo.ShowShortener(id); err != nil {
-		log.Fatal("Короткая ссылка не найдена, произошла ошибка: %w", err)
+		return "402"
 	} else {
-		shortURL = result.ShortURL
+		return result.ShortURL
 	}
-
-	return shortURL
 }
 
 func (db *DB) GetFullURL(id string) string {
@@ -96,4 +93,26 @@ func (db *DB) GetFullList() map[string]*service.Shorter {
 	}
 
 	return paths
+}
+
+func (db *DB) GetShorter(id string) *service.Shorter {
+	shorter := service.NewShorter()
+	if model, err := db.repo.ShowShortenerByID(id); err != nil {
+		log.Fatal("Произошла ошибка получения модели: %w", err)
+	} else {
+		shorter.ID = model.ID
+		shorter.ShortURL = model.ShortURL
+		shorter.LongURL = model.LongURL
+		shorter.Sign = model.Sign
+		shorter.SignID = model.SignID
+	}
+
+	return &shorter
+}
+
+func (db *DB) RemoveShorts(list []string) {
+	if err := db.repo.RemoveShorts(list); err != nil {
+		log.Fatal("Произошла ошибка удаления: %w", err)
+	}
+
 }

@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - iter14
 
 jobs:
 
@@ -14,7 +15,7 @@ jobs:
     steps:
       - name: Check branch name
         run: |
-          if [[ ! $GITHUB_HEAD_REF =~ ^iter[0-9]+$ ]]; then echo "Branch name must match pattern 'iter<number>'" && exit 1; fi
+          if [[ ! $GITHUB_REF_NAME =~ ^iter[0-9]+$ ]]; then echo "Branch name must match pattern 'iter<number>'" && exit 1; fi
 
   shortenertest:
     runs-on: ubuntu-latest
@@ -404,7 +405,7 @@ jobs:
 
       - name: "Code increment #14"
         if: |
-          github.ref == 'refs/heads/main' ||
+          github.ref == 'refs/heads/iter14' ||
           github.head_ref == 'iter14' ||
           github.head_ref == 'iter15' ||
           github.head_ref == 'iter16' ||

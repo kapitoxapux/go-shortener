@@ -25,8 +25,10 @@ type Shorter struct {
 type Storage interface {
 	SetShort(link string) (*Shorter, bool)
 	GetShort(id string) string
+	GetShorter(id string) *Shorter
 	GetFullURL(id string) string
 	GetFullList() map[string]*Shorter
+	RemoveShorts(list []string)
 }
 
 type Service struct {

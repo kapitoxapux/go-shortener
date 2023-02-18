@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"myapp/internal/app/config"
@@ -33,6 +34,11 @@ type JSONShorter struct {
 	URL string `json:"url"`
 }
 
+type JSONObject struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}
+
 type JSONBatcher struct {
 	URLID   string `json:"correlation_id"`
 	LongURL string `json:"original_url"`
@@ -48,18 +54,13 @@ type gzipWriter struct {
 	Writer io.Writer
 }
 
-type JSONObject struct {
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
-}
-
 func (w gzipWriter) Write(b []byte) (int, error) {
 
 	return w.Writer.Write(b)
 }
 
 func SetUserCookie(req *http.Request, sign []byte) *http.Cookie {
-	expiration := time.Now().Add(60 * time.Second)
+	expiration := time.Now().Add(120 * time.Second)
 
 	return &http.Cookie{
 		Name:    "user_id",
@@ -197,17 +198,19 @@ func (h *Handler) GetShortAction(res http.ResponseWriter, req *http.Request) {
 
 		return
 	}
-
 	part := req.URL.Path
 	formated := strings.Replace(part, "/", "", -1)
-
 	sh := h.service.Storage.GetShort(formated)
 	if sh == "" {
 		http.Error(res, "Url not founded!", http.StatusBadRequest)
 
 		return
 	}
+	if sh == "402" {
+		res.WriteHeader(http.StatusGone)
 
+		return
+	}
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	res.Header().Set("Location", h.service.Storage.GetFullURL(formated))
 	res.WriteHeader(http.StatusTemporaryRedirect)
@@ -359,4 +362,138 @@ func (h *Handler) GetBatchAction(res http.ResponseWriter, req *http.Request) {
 	}
 	p, _ := json.Marshal(resultsObj)
 	res.Write([]byte(p))
+}
+
+func (h *Handler) RemoveBatchAction(res http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodDelete {
+		http.Error(res, "Only Delete requests are allowed for this route!", http.StatusMethodNotAllowed)
+
+		return
+	}
+	if req.URL.Path != "/api/user/urls" {
+		http.Error(res, "Wrong route!", http.StatusNotFound)
+
+		return
+	}
+	defer req.Body.Close()
+	if req.ContentLength < 1 {
+		http.Error(res, "Empty body!", http.StatusBadRequest)
+	}
+	b, err := io.ReadAll(req.Body)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+
+		return
+	}
+	cookie, _ := req.Cookie("user_id")
+	if cookie == nil {
+		http.Error(res, "Failed to identify, no 'user_id' cookie set", http.StatusBadRequest)
+	} else {
+		var list []string
+		if err := json.Unmarshal(b, &list); err != nil { // тут может быть ошибка если будет передаваться не в json
+			http.Error(res, err.Error(), http.StatusBadRequest)
+		}
+		var shorters []string
+		inputCh := make(chan *service.Shorter)
+		go RemoveWorkers(
+			h,
+			list,
+			cookie.Value,
+			inputCh,
+			shorters,
+		)
+
+	}
+	res.WriteHeader(http.StatusAccepted)
+}
+
+func RemoveWorkers(
+	h *Handler,
+	list []string,
+	userId string,
+	inputCh chan *service.Shorter,
+	shorters []string) {
+	go func() {
+		for _, id := range list {
+			inputCh <- h.service.Storage.GetShorter(id)
+		}
+		close(inputCh)
+	}()
+
+	workersCount := 10
+	workerChs := make([]chan *service.Shorter, 0, workersCount)
+	fanOutChs := fanOut(inputCh, workersCount)
+	for _, fanOutCh := range fanOutChs {
+		workerCh := make(chan *service.Shorter)
+		newWorker(fanOutCh, workerCh, userId)
+		workerChs = append(workerChs, workerCh)
+	}
+	for id := range fanIn(workerChs...) {
+		shorters = append(shorters, id)
+	}
+	h.service.Storage.RemoveShorts(shorters)
+}
+
+func fanOut(inputCh chan *service.Shorter, n int) []chan *service.Shorter {
+	chs := make([]chan *service.Shorter, 0, n)
+	for i := 0; i < n; i++ {
+		ch := make(chan *service.Shorter)
+		chs = append(chs, ch)
+	}
+
+	go func() {
+		defer func(chs []chan *service.Shorter) {
+			for _, ch := range chs {
+				close(ch)
+			}
+		}(chs)
+
+		for i := 0; ; i++ {
+			if i == len(chs) {
+				i = 0
+			}
+
+			list, ok := <-inputCh
+			if !ok {
+				return
+			}
+			ch := chs[i]
+			ch <- list
+		}
+	}()
+
+	return chs
+}
+
+func newWorker(input, out chan *service.Shorter, userID string) {
+	go func() {
+		for shorter := range input {
+			if GetSignerCheck(shorter.Signer.Sign, userID) {
+				out <- shorter
+			}
+
+		}
+
+		close(out)
+	}()
+}
+
+func fanIn(inputChs ...chan *service.Shorter) chan string {
+	outCh := make(chan string)
+	go func() {
+		wg := &sync.WaitGroup{}
+		for _, inputCh := range inputChs {
+			wg.Add(1)
+			go func(inputCh chan *service.Shorter) {
+				defer wg.Done()
+				for shorter := range inputCh {
+					outCh <- shorter.ID
+				}
+			}(inputCh)
+		}
+		wg.Wait()
+		close(outCh)
+	}()
+
+	return outCh
 }

@@ -114,7 +114,6 @@ func (s *FileDB) SetShort(link string) (*service.Shorter, bool) {
 }
 
 func (s *FileDB) GetShort(id string) string {
-	shortURL := ""
 	reader, _ := NewReader(s.pathStorage)
 	defer reader.Close()
 	shorter := service.NewShorter()
@@ -127,7 +126,7 @@ func (s *FileDB) GetShort(id string) string {
 
 	}
 
-	return shortURL
+	return ""
 }
 
 func (s *FileDB) GetFullURL(id string) string {
@@ -160,3 +159,10 @@ func (s *FileDB) GetFullList() map[string]*service.Shorter {
 
 	return paths
 }
+
+func (s *FileDB) GetShorter(id string) *service.Shorter {
+
+	return nil
+}
+
+func (s *FileDB) RemoveShorts(list []string) {}

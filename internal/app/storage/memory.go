@@ -74,3 +74,10 @@ func (s *InMemDB) GetFullList() map[string]*service.Shorter {
 
 	return s.db
 }
+
+func (s *InMemDB) GetShorter(id string) *service.Shorter {
+
+	return nil
+}
+
+func (s *InMemDB) RemoveShorts(list []string) {}
