@@ -57,17 +57,26 @@ func (db *DB) SetShort(link string) (*service.Shorter, bool) {
 }
 
 func (db *DB) GetShort(id string) string {
-	if result, err := db.repo.ShowShortener(id, "short"); err != nil || result == nil {
-		log.Println("Короткая ссылка не найдена, произошла ошибка: %w", err)
-		return "402"
+
+	// мне не нравится такая конструкция я переделаю потом
+
+	shortURL := ""
+	if sh, err := db.repo.ShowShortener(id); err != nil {
+		log.Println("Короткая ссылка не найдена, произошла ошибка: %w", err.Error())
 	} else {
-		return result.ShortURL
+		if sh.IsDeleted == uint8(1) {
+
+			return "402"
+		}
+		shortURL = sh.ShortURL
 	}
+
+	return shortURL
 }
 
 func (db *DB) GetFullURL(id string) string {
 	longURL := ""
-	if result, err := db.repo.ShowShortener(id, ""); err != nil || result == nil {
+	if result, err := db.repo.ShowShortener(id); err != nil {
 		log.Println("Полная ссылка не найдена, произошла ошибка: %w", err.Error())
 	} else {
 		longURL = result.LongURL
