@@ -13,7 +13,7 @@ type Repository interface {
 	CreateShortener(m *models.Link) (*models.Link, error)
 	ShowShortener(id string) (*models.Link, error)
 	ShowShorteners() ([]models.Link, error)
-	ShowShortenerByLong(link string) (*models.Link, string)
+	ShowShortenerByLong(link string) (*models.Link, error)
 	ShowShortenerByID(id string) (*models.Link, error)
 	RemoveShorts(list []string) error
 }
@@ -55,14 +55,12 @@ func (r *repository) ShowShortenerBySign(m *models.Link) (*models.Link, error) {
 	return m, nil
 }
 
-func (r *repository) ShowShortenerByLong(link string) (*models.Link, string) {
-	model := &models.Link{}
-	if err := r.db.First(model, "long_url = ?", []byte(link)).Error; err != nil {
-
-		return nil, err.Error()
+func (r *repository) ShowShortenerByLong(link string) (*models.Link, error) {
+	model := models.Link{}
+	if err := r.db.Model(model).Where("long_url = ?", []byte(link)).Error; err != nil {
+		return &model, err
 	}
-
-	return model, "Model found"
+	return &model, nil
 }
 
 func (r *repository) ShowShortenerByID(id string) (*models.Link, error) {
