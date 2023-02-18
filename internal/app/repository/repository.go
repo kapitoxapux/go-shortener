@@ -68,7 +68,7 @@ func (r *repository) ShowShortenerByLong(link string) (*models.Link, string) {
 
 func (r *repository) ShowShortenerByID(id string) (*models.Link, error) {
 	model := &models.Link{}
-	if err := r.db.Find(model).Where("id=?", id).Error; err != nil {
+	if err := r.db.Where("id=?", id).First(model).Error; err != nil {
 		return nil, err
 	}
 

@@ -60,7 +60,7 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 }
 
 func SetUserCookie(req *http.Request, sign []byte) *http.Cookie {
-	expiration := time.Now().Add(120 * time.Second)
+	expiration := time.Now().Add(6000 * time.Second)
 
 	return &http.Cookie{
 		Name:    "user_id",
@@ -390,11 +390,12 @@ func (h *Handler) RemoveBatchAction(res http.ResponseWriter, req *http.Request) 
 		http.Error(res, "Failed to identify, no 'user_id' cookie set", http.StatusBadRequest)
 	} else {
 		var list []string
+		var shorters []string
 		if err := json.Unmarshal(b, &list); err != nil { // тут может быть ошибка если будет передаваться не в json
 			http.Error(res, err.Error(), http.StatusBadRequest)
 		}
-		var shorters []string
 		inputCh := make(chan *service.Shorter)
+
 		go RemoveWorkers(
 			h,
 			list,
@@ -413,14 +414,14 @@ func RemoveWorkers(
 	userId string,
 	inputCh chan *service.Shorter,
 	shorters []string) {
+
 	go func() {
 		for _, id := range list {
 			inputCh <- h.service.Storage.GetShorter(id)
 		}
 		close(inputCh)
 	}()
-
-	workersCount := 10
+	workersCount := 5
 	workerChs := make([]chan *service.Shorter, 0, workersCount)
 	fanOutChs := fanOut(inputCh, workersCount)
 	for _, fanOutCh := range fanOutChs {
