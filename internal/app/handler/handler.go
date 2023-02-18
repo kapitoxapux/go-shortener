@@ -395,7 +395,6 @@ func (h *Handler) RemoveBatchAction(res http.ResponseWriter, req *http.Request) 
 			http.Error(res, err.Error(), http.StatusBadRequest)
 		}
 		inputCh := make(chan *service.Shorter)
-
 		go RemoveWorkers(
 			h,
 			list,
