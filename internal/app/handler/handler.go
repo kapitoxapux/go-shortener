@@ -59,23 +59,37 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-func SetUserCookie(req *http.Request, sign []byte) *http.Cookie {
+func GetSignerCheck(sign []byte, cookie string) bool {
+	resource := TokenCheck(cookie)
+	signer := service.ShorterSignerSet(resource)
+
+	return hmac.Equal(sign, signer.Sign)
+}
+
+func SetUserCookie(req *http.Request, data string) *http.Cookie {
 	expiration := time.Now().Add(6000 * time.Second)
 
 	return &http.Cookie{
 		Name:    "user_id",
-		Value:   SetCookieToken(sign),
+		Value:   data,
 		Path:    req.URL.Path,
 		Expires: expiration,
 	}
 }
 
-func GetSignerCheck(sign []byte, cookie string) bool {
+func SetCookieToken(data string) string {
+	key := sha256.Sum256(config.Secretkey) // ключ шифрования
+	aesblock, _ := aes.NewCipher(key[:32])
+	aesgcm, _ := cipher.NewGCM(aesblock)
+	// создаём вектор инициализации
+	nonceSize := aesgcm.NonceSize()
+	nonce := key[len(key)-nonceSize:]
+	dst := aesgcm.Seal(nil, nonce, []byte(data), nil) // симметрично зашифровываем
 
-	return hmac.Equal(sign, TokenCheck(cookie))
+	return hex.EncodeToString(dst)
 }
 
-func TokenCheck(cookie string) []byte {
+func TokenCheck(cookie string) string {
 	// 1) получите ключ из password, используя sha256.Sum256
 	key := sha256.Sum256(config.Secretkey)
 	// 2) создайте aesblock и aesgcm
@@ -90,19 +104,7 @@ func TokenCheck(cookie string) []byte {
 	// 5) расшифруйте и выведите данные
 	src, _ := aesgcm.Open(nil, nonce, dst, nil) // расшифровываем
 
-	return src
-}
-
-func SetCookieToken(sign []byte) string {
-	key := sha256.Sum256(config.Secretkey) // ключ шифрования
-	aesblock, _ := aes.NewCipher(key[:32])
-	aesgcm, _ := cipher.NewGCM(aesblock)
-	// создаём вектор инициализации
-	nonceSize := aesgcm.NonceSize()
-	nonce := key[len(key)-nonceSize:]
-	dst := aesgcm.Seal(nil, nonce, sign, nil) // симметрично зашифровываем
-
-	return hex.EncodeToString(dst)
+	return string(src)
 }
 
 func GzipMiddleware(next http.Handler) http.Handler {
@@ -174,16 +176,21 @@ func (h *Handler) SetShortAction(res http.ResponseWriter, req *http.Request) {
 
 		return
 	}
-	short, duplicate := h.service.Storage.SetShort(string(b))
+	val := ""
 	cookie, _ := req.Cookie("user_id")
 	if cookie == nil {
-		http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
+		val = SetCookieToken(time.Now().String())
+		http.SetCookie(res, SetUserCookie(req, val))
 	} else {
-		if !GetSignerCheck(short.Signer.Sign, cookie.Value) {
-			http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
-		}
-
+		val = cookie.Value
 	}
+	short, duplicate := h.service.Storage.SetShort(string(b), val)
+	//  else {
+	// 	if !GetSignerCheck(short.Signer.Sign,cookie.Value) {
+	// 		http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
+	// 	}
+
+	// }
 	if duplicate {
 		res.WriteHeader(http.StatusConflict)
 	} else {
@@ -244,16 +251,21 @@ func (h *Handler) GetJSONShortAction(res http.ResponseWriter, req *http.Request)
 	if err := json.Unmarshal(b, &j); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 	}
-	short, duplicate := h.service.Storage.SetShort(j.URL)
+	val := ""
 	cookie, _ := req.Cookie("user_id")
 	if cookie == nil {
-		http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
+		val = SetCookieToken(time.Now().String())
+		http.SetCookie(res, SetUserCookie(req, val))
 	} else {
-		if !GetSignerCheck(short.Signer.Sign, cookie.Value) {
-			http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
-		}
-
+		val = cookie.Value
 	}
+	short, duplicate := h.service.Storage.SetShort(j.URL, val)
+	// else {
+	// 	if !GetSignerCheck(short.Signer.Sign, cookie.Value) {
+	// 		http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
+	// 	}
+
+	// }
 	if duplicate {
 		res.WriteHeader(http.StatusConflict)
 	} else {
@@ -337,19 +349,22 @@ func (h *Handler) GetBatchAction(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 	}
 	resultsObj := []JSONResultBatcher{}
-	for i, obj := range list {
-		short, _ := h.service.Storage.SetShort(obj.LongURL)
-		if i == 1 {
-			cookie, _ := req.Cookie("user_id")
-			if cookie == nil {
-				http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
-			} else {
-				if !GetSignerCheck(short.Signer.Sign, cookie.Value) {
-					http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
-				}
+	val := ""
+	cookie, _ := req.Cookie("user_id")
+	if cookie == nil {
+		val = SetCookieToken(time.Now().String())
+		http.SetCookie(res, SetUserCookie(req, val))
+	} else {
+		val = cookie.Value
+	}
+	// else {
+	// 	if !GetSignerCheck(short.Signer.Sign, cookie.Value) {
+	// 		http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
+	// 	}
 
-			}
-		}
+	// }
+	for _, obj := range list {
+		short, _ := h.service.Storage.SetShort(obj.LongURL, val)
 		resultBatcher := new(JSONResultBatcher)
 		resultBatcher.URLID = obj.URLID
 		resultBatcher.ShortURL = short.ShortURL
@@ -391,19 +406,17 @@ func (h *Handler) RemoveBatchAction(res http.ResponseWriter, req *http.Request) 
 		http.Error(res, "Failed to identify, no 'user_id' cookie set", http.StatusBadRequest)
 	} else {
 		var list []string
-		var shorters []string
 		if err := json.Unmarshal(b, &list); err != nil { // тут может быть ошибка если будет передаваться не в json
 			http.Error(res, err.Error(), http.StatusBadRequest)
 		}
 		inputCh := make(chan *service.Shorter)
-		RemoveWorkers(
+		shorters := RemoveWorkers(
 			h,
 			list,
 			cookie.Value,
 			inputCh,
-			shorters,
 		)
-
+		h.service.Storage.RemoveShorts(shorters)
 	}
 	res.WriteHeader(http.StatusAccepted)
 	res.Write([]byte("All remoned!"))
@@ -412,28 +425,30 @@ func (h *Handler) RemoveBatchAction(res http.ResponseWriter, req *http.Request) 
 func RemoveWorkers(
 	h *Handler,
 	list []string,
-	userId string,
+	cookie string,
 	inputCh chan *service.Shorter,
-	shorters []string) {
+) []string {
 
+	var shorters []string
 	go func() {
 		for _, id := range list {
 			inputCh <- h.service.Storage.GetShorter(id)
 		}
 		close(inputCh)
 	}()
-	workersCount := 5
+	workersCount := 10
 	workerChs := make([]chan *service.Shorter, 0, workersCount)
 	fanOutChs := fanOut(inputCh, workersCount)
 	for _, fanOutCh := range fanOutChs {
 		workerCh := make(chan *service.Shorter)
-		newWorker(fanOutCh, workerCh, userId)
+		newWorker(fanOutCh, workerCh, cookie)
 		workerChs = append(workerChs, workerCh)
 	}
 	for id := range fanIn(workerChs...) {
 		shorters = append(shorters, id)
 	}
-	h.service.Storage.RemoveShorts(shorters)
+
+	return shorters
 }
 
 func fanOut(inputCh chan *service.Shorter, n int) []chan *service.Shorter {
@@ -467,10 +482,10 @@ func fanOut(inputCh chan *service.Shorter, n int) []chan *service.Shorter {
 	return chs
 }
 
-func newWorker(input, out chan *service.Shorter, userID string) {
+func newWorker(input, out chan *service.Shorter, cookie string) {
 	go func() {
 		for shorter := range input {
-			if GetSignerCheck(shorter.Signer.Sign, userID) {
+			if GetSignerCheck(shorter.Signer.Sign, cookie) {
 				out <- shorter
 			}
 

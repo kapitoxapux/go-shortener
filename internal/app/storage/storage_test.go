@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 
 	"myapp/internal/app/config"
 	"myapp/internal/app/handler"
@@ -36,7 +37,9 @@ func Test_getFullUrl(t *testing.T) {
 	db := GetDB()
 	s := service.NewService(db)
 
-	s2, _ := s.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
+	dataForCookie := time.Now().String()
+	cookie := handler.SetCookieToken(dataForCookie)
+	s2, _ := s.Storage.SetShort(os.Getenv("BASE_URL")+"/some_text_to_test_2", cookie)
 	tests := []struct {
 		name    string
 		link    string
@@ -69,7 +72,9 @@ func Test_getShort(t *testing.T) {
 	db := GetDB()
 	s := service.NewService(db)
 
-	s1, _ := s.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
+	dataForCookie := time.Now().String()
+	cookie := handler.SetCookieToken(dataForCookie)
+	s1, _ := s.Storage.SetShort(os.Getenv("BASE_URL")+"/some_text_to_test_1", cookie)
 	tests := []struct {
 		name    string
 		link    string
@@ -103,8 +108,11 @@ func Test_setShort(t *testing.T) {
 	db := GetDB()
 	s := service.NewService(db)
 
-	testNegative, _ := s.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_1")
-	testPositive, _ := s.Storage.SetShort(os.Getenv("BASE_URL") + "/some_text_to_test_2")
+	dataForCookie := time.Now().String()
+	cookie := handler.SetCookieToken(dataForCookie)
+
+	testNegative, _ := s.Storage.SetShort(os.Getenv("BASE_URL")+"/some_text_to_test_1", cookie)
+	testPositive, _ := s.Storage.SetShort(os.Getenv("BASE_URL")+"/some_text_to_test_2", cookie)
 
 	tests := []struct {
 		name    string

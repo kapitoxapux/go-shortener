@@ -84,7 +84,7 @@ func (c *loader) Close() error {
 	return c.file.Close()
 }
 
-func (s *FileDB) SetShort(link string) (*service.Shorter, bool) {
+func (s *FileDB) SetShort(link string, data string) (*service.Shorter, bool) {
 	shorter := service.NewShorter()
 	duplicate := false
 	reader, _ := NewReader(s.pathStorage)
@@ -103,11 +103,12 @@ func (s *FileDB) SetShort(link string) (*service.Shorter, bool) {
 	for short == "" {
 		short = Shortener(link)
 	}
+	sign := service.ShorterSignerSet(data)
 	shorter.ID = short
 	shorter.ShortURL = shorter.BaseURL + short
 	shorter.LongURL = link
-	shorter.Signer.Sign = service.ShorterSignerSet(short).Sign
-	shorter.Signer.SignID = service.ShorterSignerSet(short).SignID
+	shorter.Signer.Sign = sign.Sign
+	shorter.Signer.ID = sign.ID
 	_ = saver.WriteShort(&shorter)
 
 	return &shorter, duplicate

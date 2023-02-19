@@ -33,18 +33,19 @@ func Shortener(url string) string {
 	return b
 }
 
-func (s *InMemDB) SetShort(link string) (*service.Shorter, bool) {
+func (s *InMemDB) SetShort(link string, data string) (*service.Shorter, bool) {
 	shorter := service.NewShorter()
 	duplicate := false
 	short := ""
 	for short == "" {
 		short = Shortener(link)
 	}
+	sign := service.ShorterSignerSet(data)
 	shorter.ID = short
 	shorter.ShortURL = shorter.BaseURL + short
 	shorter.LongURL = link
-	shorter.Signer.Sign = service.ShorterSignerSet(short).Sign
-	shorter.Signer.SignID = service.ShorterSignerSet(short).SignID
+	shorter.Signer.Sign = sign.Sign
+	shorter.Signer.ID = sign.ID
 	s.db[short] = &shorter
 
 	return &shorter, duplicate

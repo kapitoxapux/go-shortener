@@ -13,7 +13,7 @@ type Repository interface {
 	CreateShortener(m *models.Link) (*models.Link, error)
 	ShowShortener(id string) (*models.Link, error)
 	ShowShorteners() ([]models.Link, error)
-	ShowShortenerByLong(link string) (*models.Link, error)
+	ShowShortenerByLong(link string) *models.Link
 	ShowShortenerByID(id string) (*models.Link, error)
 	RemoveShorts(list []string) error
 }
@@ -55,12 +55,12 @@ func (r *repository) ShowShortenerBySign(m *models.Link) (*models.Link, error) {
 	return m, nil
 }
 
-func (r *repository) ShowShortenerByLong(link string) (*models.Link, error) {
-	model := models.Link{}
-	if err := r.db.Model(model).Where("long_url = ?", []byte(link)).Error; err != nil {
-		return &model, err
+func (r *repository) ShowShortenerByLong(link string) *models.Link {
+	model := &models.Link{}
+	if err := r.db.Where("long_url = ?", link).First(model).Error; err != nil {
+		return nil
 	}
-	return &model, nil
+	return model
 }
 
 func (r *repository) ShowShortenerByID(id string) (*models.Link, error) {
@@ -73,7 +73,7 @@ func (r *repository) ShowShortenerByID(id string) (*models.Link, error) {
 }
 
 func (r *repository) RemoveShorts(list []string) error {
-	if err := r.db.Model(models.Link{}).Where("id IN ?", list).Updates(models.Link{IsDeleted: uint8(1)}).Error; err != nil {
+	if err := r.db.Where("id IN ?", list).Updates(models.Link{IsDeleted: uint8(1)}).Error; err != nil {
 		return err
 	}
 	return nil

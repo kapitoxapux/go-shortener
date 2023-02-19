@@ -2,7 +2,6 @@ package storage
 
 import (
 	"log"
-	"reflect"
 	"time"
 
 	"myapp/internal/app/config"
@@ -23,39 +22,36 @@ func NewDB() *DB {
 	}
 }
 
-func (db *DB) SetShort(link string) (*service.Shorter, bool) {
+func (db *DB) SetShort(link string, data string) (*service.Shorter, bool) {
 	shorter := service.NewShorter()
 	duplicate := false
-	m := models.Link{}
-	if model, err := db.repo.ShowShortenerByLong(link); err != nil {
-		log.Println("Полная ссылка не найдена, произошла ошибка: %w", err.Error())
-	} else {
-		if reflect.DeepEqual(model, &m) {
-			s := &models.Link{}
-			short := Shortener(link)
-			s.ID = short
-			s.ShortURL = shorter.BaseURL + short
-			s.LongURL = link
-			s.Sign = service.ShorterSignerSet(short).Sign
-			s.SignID = service.ShorterSignerSet(short).SignID
-			s.CreatedAt = time.Now()
-			m, err := db.repo.CreateShortener(s)
-			if err != nil {
-				log.Fatal("Model saving repository failed %w", err.Error())
-			}
-			shorter.ID = m.ID
-			shorter.ShortURL = m.ShortURL
-			shorter.LongURL = m.LongURL
-			shorter.Signer.Sign = m.Sign
-			shorter.Signer.SignID = m.SignID
-		} else {
-			duplicate = true
-			shorter.ID = model.ID
-			shorter.ShortURL = model.ShortURL
-			shorter.LongURL = model.LongURL
-			shorter.Signer.Sign = model.Sign
-			shorter.Signer.SignID = model.SignID
+	if model := db.repo.ShowShortenerByLong(link); model == nil {
+		// log.Println("Полная ссылка не найдена, произошла ошибка: %w", err.Error())
+		s := &models.Link{}
+		shortID := Shortener(link)
+		sign := service.ShorterSignerSet(data)
+		s.ID = shortID
+		s.ShortURL = shorter.BaseURL + shortID
+		s.LongURL = link
+		s.Sign = sign.Sign
+		s.SignID = sign.ID
+		s.CreatedAt = time.Now()
+		m, err := db.repo.CreateShortener(s)
+		if err != nil {
+			log.Fatal("Model saving repository failed %w", err.Error())
 		}
+		shorter.ID = m.ID
+		shorter.ShortURL = m.ShortURL
+		shorter.LongURL = m.LongURL
+		shorter.Signer.Sign = m.Sign
+		shorter.Signer.ID = m.SignID
+	} else {
+		duplicate = true
+		shorter.ID = model.ID
+		shorter.ShortURL = model.ShortURL
+		shorter.LongURL = model.LongURL
+		shorter.Signer.Sign = model.Sign
+		shorter.Signer.ID = model.SignID
 	}
 
 	return &shorter, duplicate
@@ -101,7 +97,7 @@ func (db *DB) GetFullList() map[string]*service.Shorter {
 			shorter.ShortURL = model.ShortURL
 			shorter.LongURL = model.LongURL
 			shorter.Sign = model.Sign
-			shorter.SignID = model.SignID
+			shorter.ID = model.ID
 			paths[model.ID] = &shorter
 		}
 	}
@@ -118,7 +114,7 @@ func (db *DB) GetShorter(id string) *service.Shorter {
 		shorter.ShortURL = model.ShortURL
 		shorter.LongURL = model.LongURL
 		shorter.Sign = model.Sign
-		shorter.SignID = model.SignID
+		shorter.ID = model.ID
 	}
 
 	return &shorter

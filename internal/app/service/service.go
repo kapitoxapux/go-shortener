@@ -10,8 +10,8 @@ import (
 )
 
 type Signer struct {
-	SignID uint32 `json:"signID"`
-	Sign   []byte `json:"sign"`
+	ID   uint32 `json:"signID"`
+	Sign []byte `json:"sign"`
 }
 
 type Shorter struct {
@@ -23,7 +23,7 @@ type Shorter struct {
 }
 
 type Storage interface {
-	SetShort(link string) (*Shorter, bool)
+	SetShort(link string, cookie string) (*Shorter, bool)
 	GetShort(id string) string
 	GetShorter(id string) *Shorter
 	GetFullURL(id string) string
@@ -48,18 +48,18 @@ func NewShorter() Shorter {
 	shorter.LongURL = ""
 	shorter.ShortURL = ""
 	shorter.BaseURL = config.GetConfigBase() + "/"
-	shorter.Signer.SignID = 0
+	shorter.Signer.ID = 0
 	shorter.Signer.Sign = nil
 
 	return shorter
 }
 
-func ShorterSignerSet(short string) Signer {
-	data, _ := hex.DecodeString(short)
+func ShorterSignerSet(data string) Signer {
+	resource, _ := hex.DecodeString(data)
+	id := binary.BigEndian.Uint32(resource[:4])
 	h := hmac.New(sha256.New, config.Secretkey)
-	h.Write(data)
+	h.Write(resource)
 	sign := h.Sum(nil)
-	id := binary.BigEndian.Uint32(sign[:4])
 
 	return Signer{id, sign}
 }
