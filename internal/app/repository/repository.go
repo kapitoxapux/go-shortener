@@ -73,7 +73,8 @@ func (r *repository) ShowShortenerByID(id string) (*models.Link, error) {
 }
 
 func (r *repository) RemoveShorts(list []string) error {
-	if err := r.db.Where("id IN ?", list).Updates(models.Link{IsDeleted: uint8(1)}).Error; err != nil {
+	model := &models.Link{}
+	if err := r.db.Model(model).Where("id IN ?", list).Updates(models.Link{IsDeleted: uint8(1)}).Error; err != nil {
 		return err
 	}
 	return nil

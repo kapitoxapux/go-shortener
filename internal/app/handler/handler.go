@@ -60,9 +60,8 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 }
 
 func GetSignerCheck(sign []byte, cookie string) bool {
-	resource := TokenCheck(cookie)
-	signer := service.ShorterSignerSet(resource)
-
+	// resource := TokenCheck(cookie)
+	signer := service.ShorterSignerSet(cookie)
 	return hmac.Equal(sign, signer.Sign)
 }
 
@@ -410,13 +409,13 @@ func (h *Handler) RemoveBatchAction(res http.ResponseWriter, req *http.Request) 
 			http.Error(res, err.Error(), http.StatusBadRequest)
 		}
 		inputCh := make(chan *service.Shorter)
-		shorters := RemoveWorkers(
+		list = RemoveWorkers(
 			h,
 			list,
 			cookie.Value,
 			inputCh,
 		)
-		h.service.Storage.RemoveShorts(shorters)
+		h.service.Storage.RemoveShorts(list)
 	}
 	res.WriteHeader(http.StatusAccepted)
 	res.Write([]byte("All remoned!"))
