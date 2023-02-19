@@ -98,6 +98,7 @@ func (db *DB) GetFullList() map[string]*service.Shorter {
 			shorter.LongURL = model.LongURL
 			shorter.Sign = model.Sign
 			shorter.ID = model.ID
+			shorter.Removed = model.IsDeleted
 			paths[model.ID] = &shorter
 		}
 	}
@@ -115,6 +116,7 @@ func (db *DB) GetShorter(id string) *service.Shorter {
 		shorter.LongURL = model.LongURL
 		shorter.Sign = model.Sign
 		shorter.ID = model.ID
+		shorter.Removed = model.IsDeleted
 	}
 
 	return &shorter

@@ -19,6 +19,7 @@ type Shorter struct {
 	LongURL  string `json:"longURL"`
 	ShortURL string `json:"shortURL"`
 	BaseURL  string `json:"baseURL"`
+	Removed  uint8  `json:"isDeleted"`
 	Signer
 }
 
@@ -48,6 +49,7 @@ func NewShorter() Shorter {
 	shorter.LongURL = ""
 	shorter.ShortURL = ""
 	shorter.BaseURL = config.GetConfigBase() + "/"
+	shorter.Removed = 0
 	shorter.Signer.ID = 0
 	shorter.Signer.Sign = nil
 

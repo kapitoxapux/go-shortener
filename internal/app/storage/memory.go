@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"log"
 	"math/big"
 	"math/rand"
 
@@ -53,9 +54,13 @@ func (s *InMemDB) SetShort(link string, data string) (*service.Shorter, bool) {
 
 func (s *InMemDB) GetShort(id string) string {
 	shortURL := ""
-	if s.db[id] != nil {
+	if s.db[id] != nil && s.db[id].Removed == uint8(0) {
 
 		return s.db[id].ShortURL
+	}
+	if s.db[id] != nil && s.db[id].Removed == uint8(1) {
+
+		return "402"
 	}
 
 	return shortURL
@@ -77,8 +82,25 @@ func (s *InMemDB) GetFullList() map[string]*service.Shorter {
 }
 
 func (s *InMemDB) GetShorter(id string) *service.Shorter {
-
-	return nil
+	shorter := service.NewShorter()
+	if s.db[id] == nil {
+		log.Fatal("Произошла ошибка получения структуры")
+	} else {
+		shorter.ID = s.db[id].ID
+		shorter.ShortURL = s.db[id].ShortURL
+		shorter.LongURL = s.db[id].LongURL
+		shorter.Signer.Sign = s.db[id].Signer.Sign
+		shorter.Signer.ID = s.db[id].Signer.ID
+		shorter.Removed = s.db[id].Removed
+	}
+	return &shorter
 }
 
-func (s *InMemDB) RemoveShorts(list []string) {}
+func (s *InMemDB) RemoveShorts(list []string) {
+	// log.Println(list)
+	for _, id := range list {
+		// log.Println(id)
+		// log.Println(s.db[id])
+		s.db[id].Removed = uint8(1)
+	}
+}

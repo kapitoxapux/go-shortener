@@ -121,7 +121,12 @@ func (s *FileDB) GetShort(id string) string {
 	for reader.scanner.Scan() {
 		data := reader.scanner.Bytes()
 		_ = json.Unmarshal(data, &shorter)
-		if id == shorter.ID {
+		if id == shorter.ID && shorter.Removed == uint8(1) {
+
+			return "402"
+		}
+		if id == shorter.ID && shorter.Removed != uint8(1) {
+
 			return shorter.ShortURL
 		}
 
@@ -162,8 +167,41 @@ func (s *FileDB) GetFullList() map[string]*service.Shorter {
 }
 
 func (s *FileDB) GetShorter(id string) *service.Shorter {
+	reader, _ := NewReader(s.pathStorage)
+	defer reader.Close()
+	shorter := service.NewShorter()
+	for reader.scanner.Scan() {
+		data := reader.scanner.Bytes()
+		_ = json.Unmarshal(data, &shorter)
+		if id == shorter.ID {
+
+			return &shorter
+		}
+
+	}
 
 	return nil
 }
 
-func (s *FileDB) RemoveShorts(list []string) {}
+func (s *FileDB) RemoveShorts(list []string) {
+
+	// reader, _ := NewReader(s.pathStorage)
+	// defer reader.Close()
+	// saver, _ := NewSaver(s.pathStorage)
+	// defer saver.Close()
+	// shorter := service.NewShorter()
+	// for reader.scanner.Scan() {
+	// 	data := reader.scanner.Bytes()
+	// 	_ = json.Unmarshal(data, &shorter)
+	// 	for _, id := range list {
+	// 		if id == shorter.ID {
+	// 			log.Println(id)
+	// 			// _ = saver.WriteShort(&shorter)
+	// 		}
+	// 	}
+
+	// }
+
+	// return
+
+}
