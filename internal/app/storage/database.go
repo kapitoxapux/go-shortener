@@ -58,9 +58,6 @@ func (db *DB) SetShort(link string, data string) (*service.Shorter, bool) {
 }
 
 func (db *DB) GetShort(id string) string {
-
-	// мне не нравится такая конструкция я переделаю потом
-
 	shortURL := ""
 	if sh, err := db.repo.ShowShortener(id); err != nil {
 		log.Println("Короткая ссылка не найдена, произошла ошибка: %w", err.Error())

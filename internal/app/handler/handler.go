@@ -184,12 +184,7 @@ func (h *Handler) SetShortAction(res http.ResponseWriter, req *http.Request) {
 		val = cookie.Value
 	}
 	short, duplicate := h.service.Storage.SetShort(string(b), val)
-	//  else {
-	// 	if !GetSignerCheck(short.Signer.Sign,cookie.Value) {
-	// 		http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
-	// 	}
 
-	// }
 	if duplicate {
 		res.WriteHeader(http.StatusConflict)
 	} else {
@@ -259,12 +254,7 @@ func (h *Handler) GetJSONShortAction(res http.ResponseWriter, req *http.Request)
 		val = cookie.Value
 	}
 	short, duplicate := h.service.Storage.SetShort(j.URL, val)
-	// else {
-	// 	if !GetSignerCheck(short.Signer.Sign, cookie.Value) {
-	// 		http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
-	// 	}
 
-	// }
 	if duplicate {
 		res.WriteHeader(http.StatusConflict)
 	} else {
@@ -356,12 +346,7 @@ func (h *Handler) GetBatchAction(res http.ResponseWriter, req *http.Request) {
 	} else {
 		val = cookie.Value
 	}
-	// else {
-	// 	if !GetSignerCheck(short.Signer.Sign, cookie.Value) {
-	// 		http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
-	// 	}
 
-	// }
 	for _, obj := range list {
 		short, _ := h.service.Storage.SetShort(obj.LongURL, val)
 		resultBatcher := new(JSONResultBatcher)
