@@ -184,24 +184,36 @@ func (s *FileDB) GetShorter(id string) *service.Shorter {
 }
 
 func (s *FileDB) RemoveShorts(list []string) {
+	db := map[string]*service.Shorter{}
 
-	// reader, _ := NewReader(s.pathStorage)
-	// defer reader.Close()
-	// saver, _ := NewSaver(s.pathStorage)
-	// defer saver.Close()
-	// shorter := service.NewShorter()
-	// for reader.scanner.Scan() {
-	// 	data := reader.scanner.Bytes()
-	// 	_ = json.Unmarshal(data, &shorter)
-	// 	for _, id := range list {
-	// 		if id == shorter.ID {
-	// 			log.Println(id)
-	// 			// _ = saver.WriteShort(&shorter)
-	// 		}
-	// 	}
+	reader, _ := NewReader(s.pathStorage)
+	defer reader.Close()
 
-	// }
+	saver, _ := NewSaver(s.pathStorage)
+	defer saver.Close()
 
-	// return
+	for reader.scanner.Scan() {
+		data := reader.scanner.Bytes()
+		shorter := service.NewShorter()
+		_ = json.Unmarshal(data, &shorter)
+		for _, id := range list {
+			if id == shorter.ID {
+				shorter.Removed = uint8(1)
+				db[shorter.ID] = &shorter
+			}
+
+		}
+
+		if db[shorter.ID] == nil {
+			db[shorter.ID] = &shorter
+		}
+
+	}
+
+	os.Truncate(s.pathStorage, 0)
+
+	for _, el := range db {
+		_ = saver.WriteShort(el)
+	}
 
 }

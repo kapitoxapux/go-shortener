@@ -97,10 +97,7 @@ func (s *InMemDB) GetShorter(id string) *service.Shorter {
 }
 
 func (s *InMemDB) RemoveShorts(list []string) {
-	// log.Println(list)
 	for _, id := range list {
-		// log.Println(id)
-		// log.Println(s.db[id])
 		s.db[id].Removed = uint8(1)
 	}
 }
