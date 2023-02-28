@@ -2,11 +2,9 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -78,7 +76,7 @@ func RemoveWorkers(storage *service.Service, inputCh chan *service.Shorter) {
 	}
 }
 
-func (a *App) Run() error {
+func (a *App) Run(ctx context.Context) error {
 	route := chi.NewRouter()
 	address := config.GetConfigAddress()
 	registerHTTPEndpoints(route, *a.service, *a.channel)
@@ -91,17 +89,30 @@ func (a *App) Run() error {
 
 	go func() {
 		// go RemoveWorkers(a.service, a.channel.InputChannel)
-		if err := a.httpServer.ListenAndServe(); err != nil {
+		if err := a.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to listen and serve: %+v", err)
 		}
 
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-	<-quit
+	<-ctx.Done()
+
 	ctx, shutdown := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdown()
 
-	return a.httpServer.Shutdown(ctx)
+	quit := make(chan struct{}, 1)
+
+	go func() {
+		time.Sleep(3 * time.Second)
+		quit <- struct{}{}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("server shutdown: %w", ctx.Err())
+	case <-quit:
+		log.Println("finished")
+	}
+
+	return nil
 }
