@@ -12,7 +12,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"myapp/internal/app/config"
@@ -21,12 +20,14 @@ import (
 
 type Handler struct {
 	service service.Service
+	channel service.Channel
 }
 
-func NewHandler(service service.Service) *Handler {
+func NewHandler(service service.Service, channel service.Channel) *Handler {
 
 	return &Handler{
 		service: service,
+		channel: channel,
 	}
 }
 
@@ -393,108 +394,16 @@ func (h *Handler) RemoveBatchAction(res http.ResponseWriter, req *http.Request) 
 		if err := json.Unmarshal(b, &list); err != nil { // тут может быть ошибка если будет передаваться не в json
 			http.Error(res, err.Error(), http.StatusBadRequest)
 		}
-		inputCh := make(chan *service.Shorter)
-		list = RemoveWorkers(
-			h,
-			list,
-			cookie.Value,
-			inputCh,
-		)
-		h.service.Storage.RemoveShorts(list)
+
+		for _, id := range list {
+			shorter := h.service.Storage.GetShorter(id)
+			if GetSignerCheck(shorter.Signer.Sign, cookie.Value) {
+				h.channel.InputChannel <- shorter
+			}
+
+		}
+
 	}
 	res.WriteHeader(http.StatusAccepted)
 	res.Write([]byte("All remoned!"))
-}
-
-func RemoveWorkers(
-	h *Handler,
-	list []string,
-	cookie string,
-	inputCh chan *service.Shorter,
-) []string {
-
-	var shorters []string
-	go func() {
-		for _, id := range list {
-			inputCh <- h.service.Storage.GetShorter(id)
-		}
-		close(inputCh)
-	}()
-	workersCount := 10
-	workerChs := make([]chan *service.Shorter, 0, workersCount)
-	fanOutChs := fanOut(inputCh, workersCount)
-	for _, fanOutCh := range fanOutChs {
-		workerCh := make(chan *service.Shorter)
-		newWorker(fanOutCh, workerCh, cookie)
-		workerChs = append(workerChs, workerCh)
-	}
-	for id := range fanIn(workerChs...) {
-		shorters = append(shorters, id)
-	}
-
-	return shorters
-}
-
-func fanOut(inputCh chan *service.Shorter, n int) []chan *service.Shorter {
-	chs := make([]chan *service.Shorter, 0, n)
-	for i := 0; i < n; i++ {
-		ch := make(chan *service.Shorter)
-		chs = append(chs, ch)
-	}
-
-	go func() {
-		defer func(chs []chan *service.Shorter) {
-			for _, ch := range chs {
-				close(ch)
-			}
-		}(chs)
-
-		for i := 0; ; i++ {
-			if i == len(chs) {
-				i = 0
-			}
-
-			list, ok := <-inputCh
-			if !ok {
-				return
-			}
-			ch := chs[i]
-			ch <- list
-		}
-	}()
-
-	return chs
-}
-
-func newWorker(input, out chan *service.Shorter, cookie string) {
-	go func() {
-		for shorter := range input {
-			if GetSignerCheck(shorter.Signer.Sign, cookie) {
-				out <- shorter
-			}
-
-		}
-
-		close(out)
-	}()
-}
-
-func fanIn(inputChs ...chan *service.Shorter) chan string {
-	outCh := make(chan string)
-	go func() {
-		wg := &sync.WaitGroup{}
-		for _, inputCh := range inputChs {
-			wg.Add(1)
-			go func(inputCh chan *service.Shorter) {
-				defer wg.Done()
-				for shorter := range inputCh {
-					outCh <- shorter.ID
-				}
-			}(inputCh)
-		}
-		wg.Wait()
-		close(outCh)
-	}()
-
-	return outCh
 }
