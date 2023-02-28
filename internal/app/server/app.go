@@ -89,7 +89,7 @@ func (a *App) Run() error {
 	// go RemoveWorkers(a.service, a.channel.InputChannel)
 
 	go func() {
-		go RemoveWorkers(a.service, a.channel.InputChannel)
+		// go RemoveWorkers(a.service, a.channel.InputChannel)
 		if err := a.httpServer.ListenAndServe(); err != nil {
 			log.Fatalf("Failed to listen and serve: %+v", err)
 		}
