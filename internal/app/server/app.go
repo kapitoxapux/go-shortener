@@ -61,7 +61,7 @@ func registerHTTPEndpoints(router *chi.Mux, service service.Service, channel ser
 }
 
 func RemoveWorkers(storage *service.Service, inputCh chan *service.Shorter) {
-	shorters := make([]string, 0, 10)
+	shorters := make([]string, 0)
 
 	workersCount := 10
 	workerChs := make([]chan *service.Shorter, 0, workersCount)
@@ -86,7 +86,11 @@ func (a *App) Run() error {
 		Handler: handler.GzipMiddleware(route),
 	}
 
-	go RemoveWorkers(a.service, a.channel.InputChannel)
+	// go RemoveWorkers(a.service, a.channel.InputChannel)
+	go func() {
+		RemoveWorkers(a.service, a.channel.InputChannel)
+		close(a.channel.InputChannel)
+	}()
 
 	go func() {
 		if err := a.httpServer.ListenAndServe(); err != nil {
@@ -94,6 +98,7 @@ func (a *App) Run() error {
 		}
 
 	}()
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, os.Interrupt)
 	<-quit
