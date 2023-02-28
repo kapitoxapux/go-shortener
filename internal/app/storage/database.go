@@ -25,7 +25,8 @@ func NewDB() *DB {
 func (db *DB) SetShort(link string, data string) (*service.Shorter, bool) {
 	shorter := service.NewShorter()
 	duplicate := false
-	if model := db.repo.ShowShortenerByLong(link); model == nil {
+
+	if model := db.repo.ShowShortenerByLong(link); model.ID == "" {
 		// log.Println("Полная ссылка не найдена, произошла ошибка: %w", err.Error())
 		s := &models.Link{}
 		shortID := Shortener(link)

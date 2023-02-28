@@ -57,7 +57,7 @@ func (r *repository) ShowShortenerBySign(m *models.Link) (*models.Link, error) {
 
 func (r *repository) ShowShortenerByLong(link string) *models.Link {
 	model := &models.Link{}
-	if err := r.db.Where("long_url = ?", link).First(model).Error; err != nil {
+	if err := r.db.Limit(1).Find(model, "long_url = ?", link).Error; err != nil {
 		return nil
 	}
 	return model

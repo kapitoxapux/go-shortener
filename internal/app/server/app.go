@@ -86,7 +86,7 @@ func (a *App) Run() error {
 		Handler: handler.GzipMiddleware(route),
 	}
 
-	// go RemoveWorkers(a.service, a.channel.InputChannel)
+	go RemoveWorkers(a.service, a.channel.InputChannel)
 
 	go func() {
 		// go RemoveWorkers(a.service, a.channel.InputChannel)
