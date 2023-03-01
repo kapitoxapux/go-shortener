@@ -107,9 +107,14 @@ func TokenCheck(cookie string) string {
 	return string(src)
 }
 
-func GzipMiddleware(next http.Handler) http.Handler {
+func CustomMiddleware(h http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
+			cookie, _ := r.Cookie("user_id")
+			if cookie == nil {
+				val := SetCookieToken(time.Now().String())
+				r.AddCookie(SetUserCookie(r, val))
+			}
 			if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 				gzw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 				if err != nil {
@@ -134,7 +139,8 @@ func GzipMiddleware(next http.Handler) http.Handler {
 				r.Body = gzr
 				defer gzr.Close()
 			}
-			next.ServeHTTP(w, r)
+
+			h.ServeHTTP(w, r)
 		},
 	)
 }
@@ -178,19 +184,15 @@ func (h *Handler) SetShortAction(res http.ResponseWriter, req *http.Request) {
 	}
 	val := ""
 	cookie, _ := req.Cookie("user_id")
-	if cookie == nil {
-		val = SetCookieToken(time.Now().String())
-		http.SetCookie(res, SetUserCookie(req, val))
-	} else {
-		val = cookie.Value
-	}
+	val = cookie.Value
+	http.SetCookie(res, SetUserCookie(req, val))
 	short, duplicate := h.service.Storage.SetShort(string(b), val)
-
 	if duplicate {
 		res.WriteHeader(http.StatusConflict)
 	} else {
 		res.WriteHeader(http.StatusCreated)
 	}
+
 	res.Write([]byte(short.ShortURL))
 }
 
@@ -387,20 +389,15 @@ func (h *Handler) RemoveBatchAction(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 	cookie, _ := req.Cookie("user_id")
-	if cookie == nil {
-		http.Error(res, "Failed to identify, no 'user_id' cookie set", http.StatusBadRequest)
-	} else {
-		var list []string
-		if err := json.Unmarshal(b, &list); err != nil { // тут может быть ошибка если будет передаваться не в json
-			http.Error(res, err.Error(), http.StatusBadRequest)
-		}
+	var list []string
+	if err := json.Unmarshal(b, &list); err != nil { // тут может быть ошибка если будет передаваться не в json
+		http.Error(res, err.Error(), http.StatusBadRequest)
+	}
 
-		for _, id := range list {
-			shorter := h.service.Storage.GetShorter(id)
-			if GetSignerCheck(shorter.Signer.Sign, cookie.Value) {
-				h.channel.InputChannel <- shorter
-			}
-
+	for _, id := range list {
+		shorter := h.service.Storage.GetShorter(id)
+		if GetSignerCheck(shorter.Signer.Sign, cookie.Value) {
+			h.channel.InputChannel <- shorter
 		}
 
 	}

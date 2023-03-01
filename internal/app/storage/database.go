@@ -107,7 +107,7 @@ func (db *DB) GetFullList() map[string]*service.Shorter {
 func (db *DB) GetShorter(id string) *service.Shorter {
 	shorter := service.NewShorter()
 	if model, err := db.repo.ShowShortenerByID(id); err != nil {
-		log.Fatal("Произошла ошибка получения модели: %w", err)
+		log.Println("Произошла ошибка получения модели: %w", err)
 	} else {
 		shorter.ID = model.ID
 		shorter.ShortURL = model.ShortURL

@@ -48,17 +48,6 @@ func GetDB() service.Storage {
 	return storage.NewInMemDB()
 }
 
-func registerHTTPEndpoints(router *chi.Mux, service service.Service, channel service.Channel) {
-	h := handler.NewHandler(service, channel)
-	router.Post("/", h.SetShortAction)
-	router.Get("/{`\\w+$`}", h.GetShortAction)
-	router.Post("/api/shorten", h.GetJSONShortAction)
-	router.Get("/api/user/urls", h.GetUserURLAction)
-	router.Get("/ping", h.GetPingAction)
-	router.Post("/api/shorten/batch", h.GetBatchAction)
-	router.Delete("/api/user/urls", h.RemoveBatchAction)
-}
-
 func RemoveWorkers(storage *service.Service, inputCh chan *service.Shorter) {
 	shorters := make([]string, 0)
 
@@ -76,13 +65,25 @@ func RemoveWorkers(storage *service.Service, inputCh chan *service.Shorter) {
 	}
 }
 
+func registerHTTPEndpoints(router *chi.Mux, service service.Service, channel service.Channel) {
+	h := handler.NewHandler(service, channel)
+	router.Post("/", h.SetShortAction)
+	router.Get("/{`\\w+$`}", h.GetShortAction)
+	router.Post("/api/shorten", h.GetJSONShortAction)
+	router.Get("/api/user/urls", h.GetUserURLAction)
+	router.Get("/ping", h.GetPingAction)
+	router.Post("/api/shorten/batch", h.GetBatchAction)
+	router.Delete("/api/user/urls", h.RemoveBatchAction)
+}
+
 func (a *App) Run(ctx context.Context) error {
 	route := chi.NewRouter()
 	address := config.GetConfigAddress()
 	registerHTTPEndpoints(route, *a.service, *a.channel)
+
 	a.httpServer = &http.Server{
 		Addr:    address,
-		Handler: handler.GzipMiddleware(route),
+		Handler: handler.CustomMiddleware(route),
 	}
 
 	go RemoveWorkers(a.service, a.channel.InputChannel)
