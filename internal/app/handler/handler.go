@@ -182,11 +182,9 @@ func (h *Handler) SetShortAction(res http.ResponseWriter, req *http.Request) {
 
 		return
 	}
-	val := ""
 	cookie, _ := req.Cookie("user_id")
-	val = cookie.Value
-	http.SetCookie(res, SetUserCookie(req, val))
-	short, duplicate := h.service.Storage.SetShort(string(b), val)
+	http.SetCookie(res, cookie)
+	short, duplicate := h.service.Storage.SetShort(string(b), cookie.Value)
 	if duplicate {
 		res.WriteHeader(http.StatusConflict)
 	} else {
@@ -248,16 +246,9 @@ func (h *Handler) GetJSONShortAction(res http.ResponseWriter, req *http.Request)
 	if err := json.Unmarshal(b, &j); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 	}
-	val := ""
 	cookie, _ := req.Cookie("user_id")
-	if cookie == nil {
-		val = SetCookieToken(time.Now().String())
-		http.SetCookie(res, SetUserCookie(req, val))
-	} else {
-		val = cookie.Value
-	}
+	val := cookie.Value
 	short, duplicate := h.service.Storage.SetShort(j.URL, val)
-
 	if duplicate {
 		res.WriteHeader(http.StatusConflict)
 	} else {
@@ -279,11 +270,6 @@ func (h *Handler) GetUserURLAction(res http.ResponseWriter, req *http.Request) {
 	}
 	list := []JSONObject{}
 	cookie, _ := req.Cookie("user_id")
-	if cookie == nil {
-		http.Error(res, "No content!", http.StatusNoContent)
-
-		return
-	}
 	res.Header().Set("Content-Type", "application/json; charset=utf-8")
 	for _, short := range h.service.Storage.GetFullList() {
 		if GetSignerCheck(short.Signer.Sign, cookie.Value) {
@@ -341,17 +327,9 @@ func (h *Handler) GetBatchAction(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 	}
 	resultsObj := []JSONResultBatcher{}
-	val := ""
 	cookie, _ := req.Cookie("user_id")
-	if cookie == nil {
-		val = SetCookieToken(time.Now().String())
-		http.SetCookie(res, SetUserCookie(req, val))
-	} else {
-		val = cookie.Value
-	}
-
 	for _, obj := range list {
-		short, _ := h.service.Storage.SetShort(obj.LongURL, val)
+		short, _ := h.service.Storage.SetShort(obj.LongURL, cookie.Value)
 		resultBatcher := new(JSONResultBatcher)
 		resultBatcher.URLID = obj.URLID
 		resultBatcher.ShortURL = short.ShortURL
@@ -389,11 +367,10 @@ func (h *Handler) RemoveBatchAction(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 	cookie, _ := req.Cookie("user_id")
-	var list []string
-	if err := json.Unmarshal(b, &list); err != nil { // тут может быть ошибка если будет передаваться не в json
+	list := []string{}
+	if err := json.Unmarshal(b, &list); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 	}
-
 	for _, id := range list {
 		shorter := h.service.Storage.GetShorter(id)
 		if GetSignerCheck(shorter.Signer.Sign, cookie.Value) {

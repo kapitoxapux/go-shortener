@@ -48,23 +48,6 @@ func GetDB() service.Storage {
 	return storage.NewInMemDB()
 }
 
-func RemoveWorkers(storage *service.Service, inputCh chan *service.Shorter) {
-	shorters := make([]string, 0)
-
-	workersCount := 10
-	workerChs := make([]chan *service.Shorter, 0, workersCount)
-	fanOutChs := service.FanOut(inputCh, workersCount)
-	for _, fanOutCh := range fanOutChs {
-		workerCh := make(chan *service.Shorter)
-		service.NewWorker(fanOutCh, workerCh)
-		workerChs = append(workerChs, workerCh)
-	}
-	for id := range service.FanIn(workerChs...) {
-		shorters = append(shorters, id)
-		storage.Storage.RemoveShorts(shorters)
-	}
-}
-
 func registerHTTPEndpoints(router *chi.Mux, service service.Service, channel service.Channel) {
 	h := handler.NewHandler(service, channel)
 	router.Post("/", h.SetShortAction)
@@ -86,10 +69,9 @@ func (a *App) Run(ctx context.Context) error {
 		Handler: handler.CustomMiddleware(route),
 	}
 
-	go RemoveWorkers(a.service, a.channel.InputChannel)
+	go service.RemoveWorkers(a.service, a.channel.InputChannel)
 
 	go func() {
-		// go RemoveWorkers(a.service, a.channel.InputChannel)
 		if err := a.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to listen and serve: %+v", err)
 		}

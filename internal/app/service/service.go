@@ -137,3 +137,20 @@ func NewWorker(input, out chan *Shorter) {
 		close(out)
 	}()
 }
+
+func RemoveWorkers(storage *Service, inputCh chan *Shorter) {
+	shorters := make([]string, 0)
+
+	workersCount := 10
+	workerChs := make([]chan *Shorter, 0, workersCount)
+	fanOutChs := FanOut(inputCh, workersCount)
+	for _, fanOutCh := range fanOutChs {
+		workerCh := make(chan *Shorter)
+		NewWorker(fanOutCh, workerCh)
+		workerChs = append(workerChs, workerCh)
+	}
+	for id := range FanIn(workerChs...) {
+		shorters = append(shorters, id)
+		storage.Storage.RemoveShorts(shorters)
+	}
+}
