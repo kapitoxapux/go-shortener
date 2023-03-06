@@ -20,17 +20,24 @@ import (
 
 type Handler struct {
 	service service.Service
+	channel service.Channel
 }
 
-func NewHandler(service service.Service) *Handler {
+func NewHandler(service service.Service, channel service.Channel) *Handler {
 
 	return &Handler{
 		service: service,
+		channel: channel,
 	}
 }
 
 type JSONShorter struct {
 	URL string `json:"url"`
+}
+
+type JSONObject struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
 type JSONBatcher struct {
@@ -48,33 +55,41 @@ type gzipWriter struct {
 	Writer io.Writer
 }
 
-type JSONObject struct {
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
-}
-
 func (w gzipWriter) Write(b []byte) (int, error) {
 
 	return w.Writer.Write(b)
 }
 
-func SetUserCookie(req *http.Request, sign []byte) *http.Cookie {
-	expiration := time.Now().Add(60 * time.Second)
+func GetSignerCheck(sign []byte, cookie string) bool {
+	// resource := TokenCheck(cookie)
+	signer := service.ShorterSignerSet(cookie)
+	return hmac.Equal(sign, signer.Sign)
+}
+
+func SetUserCookie(req *http.Request, data string) *http.Cookie {
+	expiration := time.Now().Add(6000 * time.Second)
 
 	return &http.Cookie{
 		Name:    "user_id",
-		Value:   SetCookieToken(sign),
+		Value:   data,
 		Path:    req.URL.Path,
 		Expires: expiration,
 	}
 }
 
-func GetSignerCheck(sign []byte, cookie string) bool {
+func SetCookieToken(data string) string {
+	key := sha256.Sum256(config.Secretkey) // ключ шифрования
+	aesblock, _ := aes.NewCipher(key[:32])
+	aesgcm, _ := cipher.NewGCM(aesblock)
+	// создаём вектор инициализации
+	nonceSize := aesgcm.NonceSize()
+	nonce := key[len(key)-nonceSize:]
+	dst := aesgcm.Seal(nil, nonce, []byte(data), nil) // симметрично зашифровываем
 
-	return hmac.Equal(sign, TokenCheck(cookie))
+	return hex.EncodeToString(dst)
 }
 
-func TokenCheck(cookie string) []byte {
+func TokenCheck(cookie string) string {
 	// 1) получите ключ из password, используя sha256.Sum256
 	key := sha256.Sum256(config.Secretkey)
 	// 2) создайте aesblock и aesgcm
@@ -89,24 +104,17 @@ func TokenCheck(cookie string) []byte {
 	// 5) расшифруйте и выведите данные
 	src, _ := aesgcm.Open(nil, nonce, dst, nil) // расшифровываем
 
-	return src
+	return string(src)
 }
 
-func SetCookieToken(sign []byte) string {
-	key := sha256.Sum256(config.Secretkey) // ключ шифрования
-	aesblock, _ := aes.NewCipher(key[:32])
-	aesgcm, _ := cipher.NewGCM(aesblock)
-	// создаём вектор инициализации
-	nonceSize := aesgcm.NonceSize()
-	nonce := key[len(key)-nonceSize:]
-	dst := aesgcm.Seal(nil, nonce, sign, nil) // симметрично зашифровываем
-
-	return hex.EncodeToString(dst)
-}
-
-func GzipMiddleware(next http.Handler) http.Handler {
+func CustomMiddleware(h http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
+			cookie, _ := r.Cookie("user_id")
+			if cookie == nil {
+				val := SetCookieToken(time.Now().String())
+				r.AddCookie(SetUserCookie(r, val))
+			}
 			if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 				gzw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 				if err != nil {
@@ -131,7 +139,8 @@ func GzipMiddleware(next http.Handler) http.Handler {
 				r.Body = gzr
 				defer gzr.Close()
 			}
-			next.ServeHTTP(w, r)
+
+			h.ServeHTTP(w, r)
 		},
 	)
 }
@@ -173,21 +182,15 @@ func (h *Handler) SetShortAction(res http.ResponseWriter, req *http.Request) {
 
 		return
 	}
-	short, duplicate := h.service.Storage.SetShort(string(b))
 	cookie, _ := req.Cookie("user_id")
-	if cookie == nil {
-		http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
-	} else {
-		if !GetSignerCheck(short.Signer.Sign, cookie.Value) {
-			http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
-		}
-
-	}
+	http.SetCookie(res, cookie)
+	short, duplicate := h.service.Storage.SetShort(string(b), cookie.Value)
 	if duplicate {
 		res.WriteHeader(http.StatusConflict)
 	} else {
 		res.WriteHeader(http.StatusCreated)
 	}
+
 	res.Write([]byte(short.ShortURL))
 }
 
@@ -197,17 +200,20 @@ func (h *Handler) GetShortAction(res http.ResponseWriter, req *http.Request) {
 
 		return
 	}
-
 	part := req.URL.Path
 	formated := strings.Replace(part, "/", "", -1)
-
 	sh := h.service.Storage.GetShort(formated)
 	if sh == "" {
 		http.Error(res, "Url not founded!", http.StatusBadRequest)
 
 		return
 	}
+	if sh == "402" {
+		res.WriteHeader(http.StatusGone)
+		res.Write([]byte("Url not founded!"))
 
+		return
+	}
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	res.Header().Set("Location", h.service.Storage.GetFullURL(formated))
 	res.WriteHeader(http.StatusTemporaryRedirect)
@@ -240,16 +246,9 @@ func (h *Handler) GetJSONShortAction(res http.ResponseWriter, req *http.Request)
 	if err := json.Unmarshal(b, &j); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 	}
-	short, duplicate := h.service.Storage.SetShort(j.URL)
 	cookie, _ := req.Cookie("user_id")
-	if cookie == nil {
-		http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
-	} else {
-		if !GetSignerCheck(short.Signer.Sign, cookie.Value) {
-			http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
-		}
-
-	}
+	val := cookie.Value
+	short, duplicate := h.service.Storage.SetShort(j.URL, val)
 	if duplicate {
 		res.WriteHeader(http.StatusConflict)
 	} else {
@@ -271,11 +270,6 @@ func (h *Handler) GetUserURLAction(res http.ResponseWriter, req *http.Request) {
 	}
 	list := []JSONObject{}
 	cookie, _ := req.Cookie("user_id")
-	if cookie == nil {
-		http.Error(res, "No content!", http.StatusNoContent)
-
-		return
-	}
 	res.Header().Set("Content-Type", "application/json; charset=utf-8")
 	for _, short := range h.service.Storage.GetFullList() {
 		if GetSignerCheck(short.Signer.Sign, cookie.Value) {
@@ -333,19 +327,9 @@ func (h *Handler) GetBatchAction(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 	}
 	resultsObj := []JSONResultBatcher{}
-	for i, obj := range list {
-		short, _ := h.service.Storage.SetShort(obj.LongURL)
-		if i == 1 {
-			cookie, _ := req.Cookie("user_id")
-			if cookie == nil {
-				http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
-			} else {
-				if !GetSignerCheck(short.Signer.Sign, cookie.Value) {
-					http.SetCookie(res, SetUserCookie(req, short.Signer.Sign))
-				}
-
-			}
-		}
+	cookie, _ := req.Cookie("user_id")
+	for _, obj := range list {
+		short, _ := h.service.Storage.SetShort(obj.LongURL, cookie.Value)
 		resultBatcher := new(JSONResultBatcher)
 		resultBatcher.URLID = obj.URLID
 		resultBatcher.ShortURL = short.ShortURL
@@ -359,4 +343,41 @@ func (h *Handler) GetBatchAction(res http.ResponseWriter, req *http.Request) {
 	}
 	p, _ := json.Marshal(resultsObj)
 	res.Write([]byte(p))
+}
+
+func (h *Handler) RemoveBatchAction(res http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodDelete {
+		http.Error(res, "Only Delete requests are allowed for this route!", http.StatusMethodNotAllowed)
+
+		return
+	}
+	if req.URL.Path != "/api/user/urls" {
+		http.Error(res, "Wrong route!", http.StatusNotFound)
+
+		return
+	}
+	defer req.Body.Close()
+	if req.ContentLength < 1 {
+		http.Error(res, "Empty body!", http.StatusBadRequest)
+	}
+	b, err := io.ReadAll(req.Body)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+
+		return
+	}
+	cookie, _ := req.Cookie("user_id")
+	list := []string{}
+	if err := json.Unmarshal(b, &list); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+	}
+	for _, id := range list {
+		shorter := h.service.Storage.GetShorter(id)
+		if GetSignerCheck(shorter.Signer.Sign, cookie.Value) {
+			h.channel.InputChannel <- shorter
+		}
+
+	}
+	res.WriteHeader(http.StatusAccepted)
+	res.Write([]byte("All remoned!"))
 }

@@ -84,7 +84,7 @@ func (c *loader) Close() error {
 	return c.file.Close()
 }
 
-func (s *FileDB) SetShort(link string) (*service.Shorter, bool) {
+func (s *FileDB) SetShort(link string, data string) (*service.Shorter, bool) {
 	shorter := service.NewShorter()
 	duplicate := false
 	reader, _ := NewReader(s.pathStorage)
@@ -103,31 +103,36 @@ func (s *FileDB) SetShort(link string) (*service.Shorter, bool) {
 	for short == "" {
 		short = Shortener(link)
 	}
+	sign := service.ShorterSignerSet(data)
 	shorter.ID = short
 	shorter.ShortURL = shorter.BaseURL + short
 	shorter.LongURL = link
-	shorter.Signer.Sign = service.ShorterSignerSet(short).Sign
-	shorter.Signer.SignID = service.ShorterSignerSet(short).SignID
+	shorter.Signer.Sign = sign.Sign
+	shorter.Signer.ID = sign.ID
 	_ = saver.WriteShort(&shorter)
 
 	return &shorter, duplicate
 }
 
 func (s *FileDB) GetShort(id string) string {
-	shortURL := ""
 	reader, _ := NewReader(s.pathStorage)
 	defer reader.Close()
 	shorter := service.NewShorter()
 	for reader.scanner.Scan() {
 		data := reader.scanner.Bytes()
 		_ = json.Unmarshal(data, &shorter)
-		if id == shorter.ID {
+		if id == shorter.ID && shorter.Removed == uint8(1) {
+
+			return "402"
+		}
+		if id == shorter.ID && shorter.Removed != uint8(1) {
+
 			return shorter.ShortURL
 		}
 
 	}
 
-	return shortURL
+	return ""
 }
 
 func (s *FileDB) GetFullURL(id string) string {
@@ -159,4 +164,56 @@ func (s *FileDB) GetFullList() map[string]*service.Shorter {
 	}
 
 	return paths
+}
+
+func (s *FileDB) GetShorter(id string) *service.Shorter {
+	reader, _ := NewReader(s.pathStorage)
+	defer reader.Close()
+	shorter := service.NewShorter()
+	for reader.scanner.Scan() {
+		data := reader.scanner.Bytes()
+		_ = json.Unmarshal(data, &shorter)
+		if id == shorter.ID {
+
+			return &shorter
+		}
+
+	}
+
+	return nil
+}
+
+func (s *FileDB) RemoveShorts(list []string) {
+	db := map[string]*service.Shorter{}
+
+	reader, _ := NewReader(s.pathStorage)
+	defer reader.Close()
+
+	saver, _ := NewSaver(s.pathStorage)
+	defer saver.Close()
+
+	for reader.scanner.Scan() {
+		data := reader.scanner.Bytes()
+		shorter := service.NewShorter()
+		_ = json.Unmarshal(data, &shorter)
+		for _, id := range list {
+			if id == shorter.ID {
+				shorter.Removed = uint8(1)
+				db[shorter.ID] = &shorter
+			}
+
+		}
+
+		if db[shorter.ID] == nil {
+			db[shorter.ID] = &shorter
+		}
+
+	}
+
+	os.Truncate(s.pathStorage, 0)
+
+	for _, el := range db {
+		_ = saver.WriteShort(el)
+	}
+
 }

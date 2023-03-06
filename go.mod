@@ -24,6 +24,7 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/go-camp/httpc v0.0.0-20210929132652-e738d714f0c2
 	github.com/go-chi/chi v1.5.4
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/jackc/pgx/v5 v5.2.0

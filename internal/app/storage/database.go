@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -23,25 +22,20 @@ func NewDB() *DB {
 	}
 }
 
-func (db *DB) SetShort(link string) (*service.Shorter, bool) {
+func (db *DB) SetShort(link string, data string) (*service.Shorter, bool) {
 	shorter := service.NewShorter()
 	duplicate := false
-	model, state := db.repo.ShowShortenerByLong(link)
-	if state == "Model found" {
-		duplicate = true
-		shorter.ID = model.ID
-		shorter.ShortURL = model.ShortURL
-		shorter.LongURL = model.LongURL
-		shorter.Signer.Sign = model.Sign
-		shorter.Signer.SignID = model.SignID
-	} else {
+
+	if model := db.repo.ShowShortenerByLong(link); model.ID == "" {
+		// log.Println("Полная ссылка не найдена, произошла ошибка: %w", err.Error())
 		s := &models.Link{}
-		short := Shortener(link)
-		s.ID = short
-		s.ShortURL = shorter.BaseURL + short
+		shortID := Shortener(link)
+		sign := service.ShorterSignerSet(data)
+		s.ID = shortID
+		s.ShortURL = shorter.BaseURL + shortID
 		s.LongURL = link
-		s.Sign = service.ShorterSignerSet(short).Sign
-		s.SignID = service.ShorterSignerSet(short).SignID
+		s.Sign = sign.Sign
+		s.SignID = sign.ID
 		s.CreatedAt = time.Now()
 		m, err := db.repo.CreateShortener(s)
 		if err != nil {
@@ -51,7 +45,14 @@ func (db *DB) SetShort(link string) (*service.Shorter, bool) {
 		shorter.ShortURL = m.ShortURL
 		shorter.LongURL = m.LongURL
 		shorter.Signer.Sign = m.Sign
-		shorter.Signer.SignID = m.SignID
+		shorter.Signer.ID = m.SignID
+	} else {
+		duplicate = true
+		shorter.ID = model.ID
+		shorter.ShortURL = model.ShortURL
+		shorter.LongURL = model.LongURL
+		shorter.Signer.Sign = model.Sign
+		shorter.Signer.ID = model.SignID
 	}
 
 	return &shorter, duplicate
@@ -59,10 +60,14 @@ func (db *DB) SetShort(link string) (*service.Shorter, bool) {
 
 func (db *DB) GetShort(id string) string {
 	shortURL := ""
-	if result, err := db.repo.ShowShortener(id); err != nil {
-		log.Fatal("Короткая ссылка не найдена, произошла ошибка: %w", err)
+	if sh, err := db.repo.ShowShortener(id); err != nil {
+		log.Println("Короткая ссылка не найдена, произошла ошибка: %w", err.Error())
 	} else {
-		shortURL = result.ShortURL
+		if sh.IsDeleted == uint8(1) {
+
+			return "402"
+		}
+		shortURL = sh.ShortURL
 	}
 
 	return shortURL
@@ -71,7 +76,7 @@ func (db *DB) GetShort(id string) string {
 func (db *DB) GetFullURL(id string) string {
 	longURL := ""
 	if result, err := db.repo.ShowShortener(id); err != nil {
-		fmt.Println("Полная ссылка не найдена, произошла ошибка: %w", err)
+		log.Println("Полная ссылка не найдена, произошла ошибка: %w", err.Error())
 	} else {
 		longURL = result.LongURL
 	}
@@ -90,10 +95,34 @@ func (db *DB) GetFullList() map[string]*service.Shorter {
 			shorter.ShortURL = model.ShortURL
 			shorter.LongURL = model.LongURL
 			shorter.Sign = model.Sign
-			shorter.SignID = model.SignID
+			shorter.ID = model.ID
+			shorter.Removed = model.IsDeleted
 			paths[model.ID] = &shorter
 		}
 	}
 
 	return paths
+}
+
+func (db *DB) GetShorter(id string) *service.Shorter {
+	shorter := service.NewShorter()
+	if model, err := db.repo.ShowShortenerByID(id); err != nil {
+		log.Println("Произошла ошибка получения модели: %w", err)
+	} else {
+		shorter.ID = model.ID
+		shorter.ShortURL = model.ShortURL
+		shorter.LongURL = model.LongURL
+		shorter.Sign = model.Sign
+		shorter.ID = model.ID
+		shorter.Removed = model.IsDeleted
+	}
+
+	return &shorter
+}
+
+func (db *DB) RemoveShorts(list []string) {
+	if err := db.repo.RemoveShorts(list); err != nil {
+		log.Fatal("Произошла ошибка удаления: %w", err)
+	}
+
 }

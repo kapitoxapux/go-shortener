@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -125,7 +126,9 @@ func TestEndpoints_Handle(t *testing.T) {
 		repo = nil
 	}
 
-	forTest, _ = service.Storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6")
+	dataForCookie := time.Now().String()
+	cookie := SetCookieToken(dataForCookie)
+	forTest, _ = service.Storage.SetShort("https://dev.to/nwneisen/writing-a-url-shortener-in-go-2ld6", cookie)
 
 	type want struct {
 		contentType string
